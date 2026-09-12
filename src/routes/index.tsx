@@ -114,6 +114,7 @@ function Index() {
     kind: "idle",
     msg: "",
   });
+  const [mostrarModelo, setMostrarModelo] = useState(false);
   const [gerando, setGerando] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [cnpjStatus, setCnpjStatus] = useState<{
@@ -336,6 +337,31 @@ function Index() {
                 </button>
               );
             })}
+          </div>
+
+          <div className="mt-5 border-t-2 border-ink/10 pt-5">
+            <button
+              type="button"
+              onClick={() => setMostrarModelo((v) => !v)}
+              className="flex w-full items-center justify-between rounded-2xl border-2 border-ink/10 bg-cream/50 px-5 py-3.5 text-left transition hover:border-ink"
+            >
+              <span className="text-sm font-extrabold text-ink">
+                📄 Ver o modelo do contrato ({model.name} · {model.subtitle})
+              </span>
+              <span className="text-xs font-extrabold text-ink/50">
+                {mostrarModelo ? "Ocultar ▲" : "Mostrar ▼"}
+              </span>
+            </button>
+            {mostrarModelo && (
+              <div className="mt-3 overflow-hidden rounded-2xl border-2 border-ink/10">
+                <iframe
+                  key={model.id}
+                  src={model.pdfUrl}
+                  title={`Modelo ${model.name} - ${model.subtitle}`}
+                  className="h-[600px] w-full bg-white"
+                />
+              </div>
+            )}
           </div>
         </section>
 

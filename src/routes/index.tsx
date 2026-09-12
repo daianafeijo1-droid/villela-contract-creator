@@ -336,7 +336,7 @@ function Index() {
                     </div>
                     <PdfThumbnail
                       url={m.pdfUrl}
-                      width={34}
+                      width={90}
                       className="h-11 w-9 rounded-md border border-ink/10"
                     />
                   </div>
@@ -352,17 +352,18 @@ function Index() {
               type="button"
               onClick={() => setMostrarModelo(true)}
               className="group relative shrink-0 overflow-hidden rounded-xl border-2 border-ink/10 transition hover:border-ink hover:shadow-[3px_3px_0_var(--brand)]"
-              title="Clique para ampliar"
+              title="Clique para ampliar e ler o contrato"
             >
-              <PdfThumbnail url={model.pdfUrl} width={92} className="h-[124px] w-[92px]" />
+              <PdfThumbnail url={model.pdfUrl} width={280} className="h-[196px] w-[144px]" />
               <span className="absolute inset-0 grid place-items-center bg-ink/0 text-[10px] font-extrabold text-transparent transition group-hover:bg-ink/40 group-hover:text-cream">
-                Ampliar
+                Ampliar e ler
               </span>
             </button>
             <div>
               <p className="text-sm font-extrabold text-ink">Prévia do modelo selecionado</p>
               <p className="text-[11px] font-semibold text-ink/50">
-                {model.name} · {model.subtitle} — clique na miniatura para ver a página completa.
+                {model.name} · {model.subtitle} — a miniatura é só para reconhecimento visual;
+                clique nela para abrir em tamanho de leitura.
               </p>
             </div>
           </div>
@@ -374,7 +375,7 @@ function Index() {
             onClick={() => setMostrarModelo(false)}
           >
             <div
-              className="max-h-[85vh] w-full max-w-sm overflow-y-auto rounded-2xl border-2 border-ink bg-cream p-4 shadow-[6px_6px_0_var(--brand)]"
+              className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl border-2 border-ink bg-cream p-4 shadow-[6px_6px_0_var(--brand)] md:max-w-3xl"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="mb-3 flex items-center justify-between">
@@ -391,7 +392,7 @@ function Index() {
               </div>
               <PdfThumbnail
                 url={model.pdfUrl}
-                width={460}
+                width={900}
                 className="w-full rounded-xl border border-ink/10"
               />
               <a

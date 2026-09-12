@@ -30,7 +30,8 @@ export async function fillContract(model: ModelDef, values: FormValues) {
 
   const pdf = await PDFDocument.load(bytes);
   const font = await pdf.embedFont(StandardFonts.Helvetica);
-  const page = pdf.getPages()[model.page] ?? pdf.getPages()[0];
+  const pages = pdf.getPages();
+  const page = pages[model.page] ?? pages[0]!;
   const { height } = page.getSize();
   const ink = rgb(0.09, 0.086, 0.106);
 
@@ -54,16 +55,19 @@ export async function fillContract(model: ModelDef, values: FormValues) {
   }
 
   // Data da assinatura
-  const { dia, mes, ano } = splitSignatureDate(values.dataAssinatura ?? "");
-  if (model.coords.assinaturaDia) draw(dia, model.coords.assinaturaDia.x, model.coords.assinaturaDia.y);
-  if (model.coords.assinaturaMes) draw(mes, model.coords.assinaturaMes.x, model.coords.assinaturaMes.y);
-  if (model.coords.assinaturaAno) draw(ano, model.coords.assinaturaAno.x, model.coords.assinaturaAno.y);
+  const { dia, mes, ano } = splitSignatureDate(values["dataAssinatura"] ?? "");
+  const sDia = model.coords["assinaturaDia"];
+  if (sDia) draw(dia, sDia.x, sDia.y);
+  const sMes = model.coords["assinaturaMes"];
+  if (sMes) draw(mes, sMes.x, sMes.y);
+  const sAno = model.coords["assinaturaAno"];
+  if (sAno) draw(ano, sAno.x, sAno.y);
 
   return pdf.save();
 }
 
 export function fileNameFor(model: ModelDef, values: FormValues) {
-  const nome = (values.razaoSocial || "contratante")
+  const nome = (values["razaoSocial"] || "contratante")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-zA-Z0-9]+/g, "-")

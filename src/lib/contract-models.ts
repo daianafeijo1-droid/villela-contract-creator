@@ -269,4 +269,4 @@ export const MODELS: ModelDef[] = [
   },
 ];
 
-export const getModel = (id: string) => MODELS.find((m) => m.id === id) ?? MODELS[0];
+export const getModel = (id: string): ModelDef => MODELS.find((m) => m.id === id) ?? MODELS[0]!;

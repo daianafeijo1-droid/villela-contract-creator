@@ -88,7 +88,7 @@ const accentSolid: Record<string, string> = {
 };
 
 function Index() {
-  const [modelId, setModelId] = useState(MODELS[0].id);
+  const [modelId, setModelId] = useState(MODELS[0]!.id);
   const [values, setValues] = useState<FormValues>({});
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [status, setStatus] = useState<{ kind: "idle" | "erro" | "ok"; msg: string }>({
@@ -133,7 +133,7 @@ function Index() {
       const item: HistoryItem = {
         id: crypto.randomUUID(),
         modelId: model.id,
-        contratante: values.razaoSocial ?? "",
+        contratante: values["razaoSocial"] ?? "",
         createdAt: new Date().toISOString(),
         values: { ...values },
       };

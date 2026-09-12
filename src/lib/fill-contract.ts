@@ -30,6 +30,7 @@ export async function fillContract(model: ModelDef, values: FormValues) {
 
   const pdf = await PDFDocument.load(bytes);
   const font = await pdf.embedFont(StandardFonts.Helvetica);
+  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
   const pages = pdf.getPages();
   const page = pages[model.page] ?? pages[0]!;
   const { height } = page.getSize();
@@ -44,14 +45,46 @@ export async function fillContract(model: ModelDef, values: FormValues) {
   for (const [key, place] of Object.entries(model.coords)) {
     if (key.startsWith("assinatura")) continue;
     const value = textFor(key, values[key] ?? "");
+    if (!value) continue;
+    if (place.ddd !== undefined) {
+      // telefone: DDD dentro dos parênteses impressos, número depois
+      const digits = value.replace(/\D/g, "");
+      const ddd = digits.slice(0, 2);
+      const rest = digits.slice(2);
+      const num = rest.length > 8 ? `${rest.slice(0, 5)}-${rest.slice(5)}` : `${rest.slice(0, 4)}-${rest.slice(4)}`;
+      draw(ddd, place.ddd, place.y, 7);
+      draw(num, place.x, place.y, place.size);
+      continue;
+    }
     draw(value, place.x, place.y, place.size);
   }
 
-  // Campos de opção (marca "X")
+  // Campos de opção
   for (const [key, options] of Object.entries(model.optionCoords ?? {})) {
     const chosen = values[key];
     const place = chosen ? options[chosen] : undefined;
-    if (place) draw("X", place.x, place.y, place.size ?? 8);
+    if (!place) continue;
+    if (place.label) {
+      // O círculo impresso é desenhado por cima: marca com "X" grande e
+      // sublinha o rótulo escolhido para não ficar dúvida.
+      const size = 15;
+      const w = bold.widthOfTextAtSize("X", size);
+      page.drawText("X", {
+        x: place.x - w / 2,
+        y: height - place.y + 3 - size * 0.36,
+        size,
+        font: bold,
+        color: ink,
+      });
+      page.drawLine({
+        start: { x: place.label.x, y: height - place.y - 1.5 },
+        end: { x: place.label.x + place.label.w, y: height - place.y - 1.5 },
+        thickness: 1.2,
+        color: ink,
+      });
+      continue;
+    }
+    draw("X", place.x, place.y, place.size ?? 8);
   }
 
   // Data da assinatura

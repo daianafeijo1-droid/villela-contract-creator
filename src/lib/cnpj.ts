@@ -36,6 +36,8 @@ export async function consultarCnpj(cnpj: string): Promise<CnpjData | null> {
 
   return {
     razaoSocial: s("razao_social") || s("nome_fantasia"),
+    nomeFantasia: s("nome_fantasia"),
+    situacaoCadastral: s("descricao_situacao_cadastral"),
     responsavel,
     endereco,
     bairro: s("bairro"),

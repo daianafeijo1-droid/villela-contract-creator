@@ -39,7 +39,12 @@ export function PdfThumbnail({ url, width = 240, className = "", alt = "Miniatur
           workerConfigurado = true;
         }
 
-        const pdf = await pdfjsLib.getDocument(url).promise;
+        const pdf = await pdfjsLib.getDocument({
+          url,
+          cMapUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
+          cMapPacked: true,
+          standardFontDataUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/standard_fonts/`,
+        }).promise;
         const page = await pdf.getPage(1);
         const base = page.getViewport({ scale: 1 });
         const scale = width / base.width;
@@ -57,7 +62,9 @@ export function PdfThumbnail({ url, width = 240, className = "", alt = "Miniatur
         cache.set(url, dataUrl);
         setSrc(dataUrl);
         setStatus("ok");
-      } catch {
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error("[PdfThumbnail] falha ao renderizar", url, e);
         if (!cancelado) setStatus("erro");
       }
     })();

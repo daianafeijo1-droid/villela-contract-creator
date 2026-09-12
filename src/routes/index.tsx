@@ -93,6 +93,18 @@ const accentSolid: Record<string, string> = {
 
 type Aba = "contratos" | "clientes";
 
+const CNPJ_AUTO_FIELDS = [
+  "razaoSocial",
+  "responsavel",
+  "endereco",
+  "bairro",
+  "municipio",
+  "uf",
+  "cep",
+  "telefone",
+  "email",
+] as const;
+
 function Index() {
   const [aba, setAba] = useState<Aba>("contratos");
   const [modelId, setModelId] = useState(MODELS[0]!.id);
@@ -136,10 +148,24 @@ function Index() {
     const masked = applyMask(field.mask, raw);
     setValues((v) => ({ ...v, [field.key]: masked }));
     setErrors((e) => ({ ...e, [field.key]: false }));
-    if (field.key === "cpfCnpj" && masked.replace(/\D/g, "").length === 14) {
-      void buscarCnpj(masked);
+    if (field.key === "cpfCnpj") {
+      const digits = masked.replace(/\D/g, "");
+      if (digits.length === 14) {
+        void buscarCnpj(masked);
+      } else {
+        limparDadosCnpj();
+      }
     }
   };
+
+  function limparDadosCnpj() {
+    setValues((v) => {
+      const next = { ...v };
+      for (const key of CNPJ_AUTO_FIELDS) delete next[key];
+      return next;
+    });
+    setCnpjStatus({ kind: "idle", msg: "" });
+  }
 
   async function buscarCnpj(cnpj: string) {
     setCnpjStatus({ kind: "loading", msg: "Consultando CNPJ..." });

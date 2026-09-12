@@ -107,9 +107,44 @@ function Index() {
   );
 
   const setField = (field: FieldDef, raw: string) => {
-    setValues((v) => ({ ...v, [field.key]: applyMask(field.mask, raw) }));
+    const masked = applyMask(field.mask, raw);
+    setValues((v) => ({ ...v, [field.key]: masked }));
     setErrors((e) => ({ ...e, [field.key]: false }));
+    if (field.key === "cpfCnpj" && masked.replace(/\D/g, "").length === 14) {
+      void buscarCnpj(masked);
+    }
   };
+
+  async function buscarCnpj(cnpj: string) {
+    setCnpjStatus({ kind: "loading", msg: "Consultando CNPJ..." });
+    try {
+      const d = await consultarCnpj(cnpj);
+      if (!d) {
+        setCnpjStatus({ kind: "erro", msg: "CNPJ não encontrado na consulta pública." });
+        return;
+      }
+      setValues((v) => {
+        const next = { ...v };
+        const put = (key: string, val: string, mask?: MaskKind) => {
+          if (val) next[key] = applyMask(mask, val);
+        };
+        put("razaoSocial", d.razaoSocial);
+        put("responsavel", d.responsavel);
+        put("endereco", d.endereco);
+        put("bairro", d.bairro);
+        put("municipio", d.municipio);
+        put("uf", d.uf, "uf");
+        put("cep", d.cep, "cep");
+        put("telefone", d.telefone, "phone");
+        put("email", d.email);
+        return next;
+      });
+      setErrors({});
+      setCnpjStatus({ kind: "ok", msg: `Dados preenchidos: ${d.razaoSocial}` });
+    } catch {
+      setCnpjStatus({ kind: "erro", msg: "Não foi possível consultar o CNPJ agora." });
+    }
+  }
 
   async function gerar() {
     const faltando: Record<string, boolean> = {};

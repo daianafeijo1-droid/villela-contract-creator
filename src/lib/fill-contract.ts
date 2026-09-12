@@ -1,0 +1,83 @@
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import type { ModelDef } from "./contract-models";
+import { formatDateBr, splitSignatureDate } from "./format";
+
+export type FormValues = Record<string, string>;
+
+const CURRENCY_KEYS = new Set([
+  "valorTotal",
+  "valorEntrada",
+  "valorParcelas",
+  "valorAdesao",
+  "valorContrato",
+]);
+
+const DATE_KEYS = new Set(["dataEntrada", "dataPagamento", "dataExito", "dataVencimento"]);
+
+/** Prepara o texto que vai para o PDF (contratos já trazem "R$" impresso). */
+function textFor(key: string, raw: string) {
+  if (!raw) return "";
+  if (CURRENCY_KEYS.has(key)) return raw.replace(/^R\$\s*/, "");
+  if (DATE_KEYS.has(key)) return formatDateBr(raw);
+  return raw;
+}
+
+export async function fillContract(model: ModelDef, values: FormValues) {
+  const bytes = await fetch(model.pdfUrl).then((r) => {
+    if (!r.ok) throw new Error("Não foi possível carregar o modelo do contrato.");
+    return r.arrayBuffer();
+  });
+
+  const pdf = await PDFDocument.load(bytes);
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  const page = pdf.getPages()[model.page] ?? pdf.getPages()[0];
+  const { height } = page.getSize();
+  const ink = rgb(0.09, 0.086, 0.106);
+
+  const draw = (text: string, x: number, yTop: number, size = 8) => {
+    if (!text) return;
+    page.drawText(text, { x, y: height - yTop, size, font, color: ink });
+  };
+
+  // Campos de texto
+  for (const [key, place] of Object.entries(model.coords)) {
+    if (key.startsWith("assinatura")) continue;
+    const value = textFor(key, values[key] ?? "");
+    draw(value, place.x, place.y, place.size);
+  }
+
+  // Campos de opção (marca "X")
+  for (const [key, options] of Object.entries(model.optionCoords ?? {})) {
+    const chosen = values[key];
+    const place = chosen ? options[chosen] : undefined;
+    if (place) draw("X", place.x, place.y, place.size ?? 8);
+  }
+
+  // Data da assinatura
+  const { dia, mes, ano } = splitSignatureDate(values.dataAssinatura ?? "");
+  if (model.coords.assinaturaDia) draw(dia, model.coords.assinaturaDia.x, model.coords.assinaturaDia.y);
+  if (model.coords.assinaturaMes) draw(mes, model.coords.assinaturaMes.x, model.coords.assinaturaMes.y);
+  if (model.coords.assinaturaAno) draw(ano, model.coords.assinaturaAno.x, model.coords.assinaturaAno.y);
+
+  return pdf.save();
+}
+
+export function fileNameFor(model: ModelDef, values: FormValues) {
+  const nome = (values.razaoSocial || "contratante")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .toLowerCase();
+  return `contrato-${model.id}-${nome}.pdf`;
+}
+
+export function downloadPdf(bytes: Uint8Array, fileName: string) {
+  const blob = new Blob([bytes as unknown as BlobPart], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  a.click();
+  URL.revokeObjectURL(url);
+}

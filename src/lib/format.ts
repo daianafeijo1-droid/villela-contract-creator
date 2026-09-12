@@ -45,6 +45,18 @@ export function maskPhone(value: string) {
   return d.replace(/(\d{2})(\d)/, "($1) $2").replace(/(\d{5})(\d{1,4})$/, "$1-$2");
 }
 
+/** Converte um valor mascarado (ex.: "R$ 1.234,56") para centavos (inteiro). */
+export function currencyToCents(masked: string): number {
+  const d = onlyDigits(masked);
+  return d ? Number(d) : 0;
+}
+
+/** Formata um total em centavos de volta para o padrão "R$ 0.000,00". */
+export function centsToCurrency(cents: number): string {
+  const safe = Math.max(0, Math.round(cents));
+  return maskCurrency(String(safe));
+}
+
 export function maskCurrency(value: string) {
   const d = onlyDigits(value).slice(0, 13);
   if (!d) return "";

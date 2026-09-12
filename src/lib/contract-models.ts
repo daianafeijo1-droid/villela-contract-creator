@@ -247,10 +247,10 @@ export const MODELS: ModelDef[] = [
     },
     optionCoords: {
       formaPagamento: {
-        Pix: { x: 79, y: 356 },
-        Débito: { x: 124, y: 356 },
-        Crédito: { x: 181, y: 356 },
-        Boleto: { x: 242, y: 356 },
+        Pix: { x: 80.5, y: 356 },
+        Débito: { x: 126, y: 356 },
+        Crédito: { x: 182.5, y: 356 },
+        Boleto: { x: 243, y: 356 },
       },
     },
   },

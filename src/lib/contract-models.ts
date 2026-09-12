@@ -93,7 +93,7 @@ const contratanteB = {
   bairro: { x: 50, y: 91 },
   municipio: { x: 251, y: 92 },
   uf: { x: 422, y: 92 },
-  telefone: { x: 58, y: 106 },
+  telefone: { x: 68, y: 106, ddd: 57 },
   email: { x: 242, y: 106 },
 };
 

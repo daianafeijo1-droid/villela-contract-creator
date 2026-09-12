@@ -295,6 +295,21 @@ function Index() {
                     onChange={(e) => setField(f, e.target.value)}
                     className={`field-input mt-1.5 ${errors[f.key] ? "border-pop!" : ""}`}
                   />
+                  {f.key === "cpfCnpj" && (
+                    <p
+                      className={`mt-1 text-[11px] font-bold ${
+                        cnpjStatus.kind === "erro"
+                          ? "text-pop"
+                          : cnpjStatus.kind === "ok"
+                            ? "text-mint"
+                            : "text-ink/45"
+                      }`}
+                    >
+                      {cnpjStatus.kind === "idle"
+                        ? "Digite o CNPJ completo para preencher os dados automaticamente."
+                        : cnpjStatus.msg}
+                    </p>
+                  )}
                 </label>
               ))}
             </div>

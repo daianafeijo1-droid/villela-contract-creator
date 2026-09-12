@@ -21,6 +21,7 @@ import {
 import { downloadPdf, fileNameFor, fillContract, type FormValues } from "@/lib/fill-contract";
 import { loadHistory, saveHistory, type HistoryItem } from "@/lib/history";
 import { consultarCnpj } from "@/lib/cnpj";
+import { ClientsSection } from "@/components/clients-section";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -88,7 +89,10 @@ const accentSolid: Record<string, string> = {
   pop: "bg-pop",
 };
 
+type Aba = "contratos" | "clientes";
+
 function Index() {
+  const [aba, setAba] = useState<Aba>("contratos");
   const [modelId, setModelId] = useState(MODELS[0]!.id);
   const [values, setValues] = useState<FormValues>({});
   const [errors, setErrors] = useState<Record<string, boolean>>({});
@@ -218,14 +222,41 @@ function Index() {
               </p>
             </div>
           </div>
-          <a
-            href="#historico"
-            className="btn-pop px-5 py-3 text-sm"
-          >
-            Histórico ({history.length})
-          </a>
+          {aba === "contratos" && (
+            <a
+              href="#historico"
+              className="btn-pop px-5 py-3 text-sm"
+            >
+              Histórico ({history.length})
+            </a>
+          )}
         </header>
 
+        <div className="mb-6 flex flex-wrap gap-2">
+          {(
+            [
+              ["contratos", "Contratos"],
+              ["clientes", "Clientes em Atendimento"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setAba(value)}
+              className={
+                aba === value
+                  ? "rounded-2xl border-2 border-ink bg-ink px-5 py-2.5 text-sm font-extrabold text-cream"
+                  : "rounded-2xl border-2 border-ink/10 bg-cream/50 px-5 py-2.5 text-sm font-extrabold text-ink/60 transition hover:border-ink"
+              }
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {aba === "clientes" && <ClientsSection />}
+
+        {aba === "contratos" && (
         <section className="block-card p-6 md:p-8">
           <p className="text-xs font-extrabold tracking-[0.2em] text-pop uppercase">Passo 1 de 3</p>
           <h1 className="mt-1 mb-5 text-4xl leading-[1.05] font-extrabold text-ink md:text-5xl">
@@ -434,6 +465,7 @@ function Index() {
             </div>
           )}
         </section>
+        )}
       </div>
     </div>
   );

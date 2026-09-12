@@ -8,6 +8,8 @@ import {
   type MaskKind,
 } from "@/lib/contract-models";
 import {
+  centsToCurrency,
+  currencyToCents,
   maskCep,
   maskCpf,
   maskCpfCnpj,
@@ -114,6 +116,21 @@ function Index() {
     () => [...CONTRATANTE_FIELDS, ...model.financeFields],
     [model],
   );
+
+  const totalAutomatico = useMemo(() => {
+    const keys = new Set(model.financeFields.map((f) => f.key));
+    return keys.has("valorTotal") && keys.has("valorEntrada") && keys.has("valorParcelas") && keys.has("qtdParcelas");
+  }, [model]);
+
+  useEffect(() => {
+    if (!totalAutomatico) return;
+    const entradaCents = currencyToCents(values.valorEntrada ?? "");
+    const parcelaCents = currencyToCents(values.valorParcelas ?? "");
+    const qtd = Number(values.qtdParcelas ?? "0") || 0;
+    const totalCents = entradaCents + parcelaCents * qtd;
+    const totalFormatado = totalCents > 0 ? centsToCurrency(totalCents) : "";
+    setValues((v) => (v.valorTotal === totalFormatado ? v : { ...v, valorTotal: totalFormatado }));
+  }, [totalAutomatico, values.valorEntrada, values.valorParcelas, values.qtdParcelas]);
 
   const setField = (field: FieldDef, raw: string) => {
     const masked = applyMask(field.mask, raw);
@@ -384,12 +401,20 @@ function Index() {
                   <label key={f.key} className="block">
                     <span className="text-xs font-bold tracking-wide text-cream/60 uppercase">
                       {f.label}
+                      {totalAutomatico && f.key === "valorTotal" && (
+                        <span className="ml-1.5 normal-case text-cream/40">
+                          (calculado automaticamente)
+                        </span>
+                      )}
                     </span>
                     <input
                       type={f.mask === "date" ? "date" : "text"}
                       value={values[f.key] ?? ""}
+                      readOnly={totalAutomatico && f.key === "valorTotal"}
                       onChange={(e) => setField(f, e.target.value)}
-                      className={`field-input-dark mt-1.5 ${errors[f.key] ? "border-pop!" : ""}`}
+                      className={`field-input-dark mt-1.5 ${errors[f.key] ? "border-pop!" : ""} ${
+                        totalAutomatico && f.key === "valorTotal" ? "cursor-not-allowed opacity-80" : ""
+                      }`}
                     />
                   </label>
                 ),

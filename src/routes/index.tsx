@@ -223,10 +223,7 @@ function Index() {
             </div>
           </div>
           {aba === "contratos" && (
-            
-              href="#historico"
-              className="btn-pop px-5 py-3 text-sm"
-            >
+            <a href="#historico" className="btn-pop px-5 py-3 text-sm">
               Histórico ({history.length})
             </a>
           )}
@@ -257,6 +254,7 @@ function Index() {
         {aba === "clientes" && <ClientsSection />}
 
         {aba === "contratos" && (
+        <>
         <section className="block-card p-6 md:p-8">
           <p className="text-xs font-extrabold tracking-[0.2em] text-pop uppercase">Passo 1 de 3</p>
           <h1 className="mt-1 mb-5 text-4xl leading-[1.05] font-extrabold text-ink md:text-5xl">
@@ -465,6 +463,7 @@ function Index() {
             </div>
           )}
         </section>
+        </>
         )}
       </div>
     </div>

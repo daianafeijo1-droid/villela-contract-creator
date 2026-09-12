@@ -20,6 +20,7 @@ import {
 } from "@/lib/format";
 import { downloadPdf, fileNameFor, fillContract, type FormValues } from "@/lib/fill-contract";
 import { loadHistory, saveHistory, type HistoryItem } from "@/lib/history";
+import { consultarCnpj } from "@/lib/cnpj";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -97,6 +98,10 @@ function Index() {
   });
   const [gerando, setGerando] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [cnpjStatus, setCnpjStatus] = useState<{
+    kind: "idle" | "loading" | "ok" | "erro";
+    msg: string;
+  }>({ kind: "idle", msg: "" });
 
   useEffect(() => setHistory(loadHistory()), []);
 

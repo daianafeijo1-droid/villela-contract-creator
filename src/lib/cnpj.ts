@@ -1,5 +1,7 @@
 export type CnpjData = {
   razaoSocial: string;
+  nomeFantasia: string;
+  situacaoCadastral: string;
   responsavel: string;
   endereco: string;
   bairro: string;

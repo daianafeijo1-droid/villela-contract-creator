@@ -20,6 +20,7 @@ import {
 } from "@/lib/format";
 import { downloadPdf, fileNameFor, fillContract, type FormValues } from "@/lib/fill-contract";
 import { loadHistory, saveHistory, type HistoryItem } from "@/lib/history";
+import { consultarCnpj } from "@/lib/cnpj";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -97,6 +98,10 @@ function Index() {
   });
   const [gerando, setGerando] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [cnpjStatus, setCnpjStatus] = useState<{
+    kind: "idle" | "loading" | "ok" | "erro";
+    msg: string;
+  }>({ kind: "idle", msg: "" });
 
   useEffect(() => setHistory(loadHistory()), []);
 
@@ -107,9 +112,44 @@ function Index() {
   );
 
   const setField = (field: FieldDef, raw: string) => {
-    setValues((v) => ({ ...v, [field.key]: applyMask(field.mask, raw) }));
+    const masked = applyMask(field.mask, raw);
+    setValues((v) => ({ ...v, [field.key]: masked }));
     setErrors((e) => ({ ...e, [field.key]: false }));
+    if (field.key === "cpfCnpj" && masked.replace(/\D/g, "").length === 14) {
+      void buscarCnpj(masked);
+    }
   };
+
+  async function buscarCnpj(cnpj: string) {
+    setCnpjStatus({ kind: "loading", msg: "Consultando CNPJ..." });
+    try {
+      const d = await consultarCnpj(cnpj);
+      if (!d) {
+        setCnpjStatus({ kind: "erro", msg: "CNPJ não encontrado na consulta pública." });
+        return;
+      }
+      setValues((v) => {
+        const next = { ...v };
+        const put = (key: string, val: string, mask?: MaskKind) => {
+          if (val) next[key] = applyMask(mask, val);
+        };
+        put("razaoSocial", d.razaoSocial);
+        put("responsavel", d.responsavel);
+        put("endereco", d.endereco);
+        put("bairro", d.bairro);
+        put("municipio", d.municipio);
+        put("uf", d.uf, "uf");
+        put("cep", d.cep, "cep");
+        put("telefone", d.telefone, "phone");
+        put("email", d.email);
+        return next;
+      });
+      setErrors({});
+      setCnpjStatus({ kind: "ok", msg: `Dados preenchidos: ${d.razaoSocial}` });
+    } catch {
+      setCnpjStatus({ kind: "erro", msg: "Não foi possível consultar o CNPJ agora." });
+    }
+  }
 
   async function gerar() {
     const faltando: Record<string, boolean> = {};
@@ -255,6 +295,21 @@ function Index() {
                     onChange={(e) => setField(f, e.target.value)}
                     className={`field-input mt-1.5 ${errors[f.key] ? "border-pop!" : ""}`}
                   />
+                  {f.key === "cpfCnpj" && (
+                    <p
+                      className={`mt-1 text-[11px] font-bold ${
+                        cnpjStatus.kind === "erro"
+                          ? "text-pop"
+                          : cnpjStatus.kind === "ok"
+                            ? "text-mint"
+                            : "text-ink/45"
+                      }`}
+                    >
+                      {cnpjStatus.kind === "idle"
+                        ? "Digite o CNPJ completo para preencher os dados automaticamente."
+                        : cnpjStatus.msg}
+                    </p>
+                  )}
                 </label>
               ))}
             </div>

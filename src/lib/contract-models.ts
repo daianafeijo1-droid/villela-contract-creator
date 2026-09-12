@@ -233,7 +233,7 @@ export const MODELS: ModelDef[] = [
     coords: {
       ...contratanteA,
       contadorNome: { x: 46, y: 143 },
-      contadorTelefone: { x: 56, y: 157 },
+      contadorTelefone: { x: 67.5, y: 157, ddd: 56.5 },
       contadorEmail: { x: 241, y: 158 },
       valorAdesao: { x: 190, y: 246 },
       dataPagamento: { x: 435, y: 246 },

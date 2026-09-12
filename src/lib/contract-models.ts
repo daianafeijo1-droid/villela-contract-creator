@@ -28,7 +28,15 @@ export type FieldDef = {
 };
 
 /** Posição do texto no PDF. `y` é medido a partir do TOPO da página (pt). */
-export type Placement = { x: number; y: number; size?: number };
+export type Placement = {
+  x: number;
+  y: number;
+  size?: number;
+  /** telefone: x do DDD, desenhado dentro dos parênteses impressos */
+  ddd?: number;
+  /** opções sobre círculos impressos: sublinha o rótulo para ficar visível */
+  label?: { x: number; w: number };
+};
 
 export type ModelDef = {
   id: string;

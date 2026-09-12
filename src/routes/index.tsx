@@ -222,7 +222,7 @@ function Index() {
               </p>
             </div>
           </div>
-                  {aba === "contratos" && (
+          {aba === "contratos" && (
             
               href="#historico"
               className="btn-pop px-5 py-3 text-sm"

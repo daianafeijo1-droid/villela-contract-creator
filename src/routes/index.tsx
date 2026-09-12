@@ -24,6 +24,7 @@ import { downloadPdf, fileNameFor, fillContract, type FormValues } from "@/lib/f
 import { loadHistory, saveHistory, type HistoryItem } from "@/lib/history";
 import { consultarCnpj } from "@/lib/cnpj";
 import { ClientsSection } from "@/components/clients-section";
+import { PdfThumbnail } from "@/components/pdf-thumbnail";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -327,10 +328,17 @@ function Index() {
                       Ativo
                     </span>
                   )}
-                  <div
-                    className={`mb-3 grid size-9 place-items-center rounded-xl ${accentBg[m.accent]}`}
-                  >
-                    <span className={`font-extrabold ${accentText[m.accent]}`}>{m.initial}</span>
+                  <div className="mb-3 flex items-center gap-2">
+                    <div
+                      className={`grid size-9 shrink-0 place-items-center rounded-xl ${accentBg[m.accent]}`}
+                    >
+                      <span className={`font-extrabold ${accentText[m.accent]}`}>{m.initial}</span>
+                    </div>
+                    <PdfThumbnail
+                      url={m.pdfUrl}
+                      width={34}
+                      className="h-11 w-9 rounded-md border border-ink/10"
+                    />
                   </div>
                   <p className="text-sm leading-tight font-bold text-ink">{m.name}</p>
                   <p className="mt-0.5 text-[11px] font-semibold text-ink/45">{m.subtitle}</p>
@@ -339,31 +347,64 @@ function Index() {
             })}
           </div>
 
-          <div className="mt-5 border-t-2 border-ink/10 pt-5">
+          <div className="mt-5 flex items-center gap-4 border-t-2 border-ink/10 pt-5">
             <button
               type="button"
-              onClick={() => setMostrarModelo((v) => !v)}
-              className="flex w-full items-center justify-between rounded-2xl border-2 border-ink/10 bg-cream/50 px-5 py-3.5 text-left transition hover:border-ink"
+              onClick={() => setMostrarModelo(true)}
+              className="group relative shrink-0 overflow-hidden rounded-xl border-2 border-ink/10 transition hover:border-ink hover:shadow-[3px_3px_0_var(--brand)]"
+              title="Clique para ampliar"
             >
-              <span className="text-sm font-extrabold text-ink">
-                📄 Ver o modelo do contrato ({model.name} · {model.subtitle})
-              </span>
-              <span className="text-xs font-extrabold text-ink/50">
-                {mostrarModelo ? "Ocultar ▲" : "Mostrar ▼"}
+              <PdfThumbnail url={model.pdfUrl} width={92} className="h-[124px] w-[92px]" />
+              <span className="absolute inset-0 grid place-items-center bg-ink/0 text-[10px] font-extrabold text-transparent transition group-hover:bg-ink/40 group-hover:text-cream">
+                Ampliar
               </span>
             </button>
-            {mostrarModelo && (
-              <div className="mt-3 overflow-hidden rounded-2xl border-2 border-ink/10">
-                <iframe
-                  key={model.id}
-                  src={model.pdfUrl}
-                  title={`Modelo ${model.name} - ${model.subtitle}`}
-                  className="h-[600px] w-full bg-white"
-                />
-              </div>
-            )}
+            <div>
+              <p className="text-sm font-extrabold text-ink">Prévia do modelo selecionado</p>
+              <p className="text-[11px] font-semibold text-ink/50">
+                {model.name} · {model.subtitle} — clique na miniatura para ver a página completa.
+              </p>
+            </div>
           </div>
         </section>
+
+        {mostrarModelo && (
+          <div
+            className="fixed inset-0 z-50 grid place-items-center bg-ink/60 p-4"
+            onClick={() => setMostrarModelo(false)}
+          >
+            <div
+              className="max-h-[85vh] w-full max-w-sm overflow-y-auto rounded-2xl border-2 border-ink bg-cream p-4 shadow-[6px_6px_0_var(--brand)]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-sm font-extrabold text-ink">
+                  {model.name} · {model.subtitle}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setMostrarModelo(false)}
+                  className="rounded-full border-2 border-ink/10 px-2.5 py-1 text-xs font-extrabold text-ink/60 hover:border-ink"
+                >
+                  Fechar ✕
+                </button>
+              </div>
+              <PdfThumbnail
+                url={model.pdfUrl}
+                width={460}
+                className="w-full rounded-xl border border-ink/10"
+              />
+              <a
+                href={model.pdfUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 block text-center text-xs font-extrabold text-violet underline underline-offset-2"
+              >
+                Abrir PDF completo em nova aba
+              </a>
+            </div>
+          </div>
+        )}
 
         <div className="mt-6 grid gap-6 md:grid-cols-3">
           <div className="block-card p-6 md:col-span-2 md:p-8">

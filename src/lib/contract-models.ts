@@ -79,7 +79,7 @@ const contratanteA = {
   bairro: { x: 50, y: 93 },
   municipio: { x: 250, y: 94 },
   uf: { x: 422, y: 94 },
-  telefone: { x: 58, y: 108 },
+  telefone: { x: 71, y: 108, ddd: 58.5 },
   email: { x: 242, y: 108 },
 };
 

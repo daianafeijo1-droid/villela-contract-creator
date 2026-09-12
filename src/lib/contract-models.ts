@@ -107,7 +107,7 @@ const contratantePrf = {
   bairro: { x: 50, y: 86 },
   municipio: { x: 250, y: 87 },
   uf: { x: 422, y: 87 },
-  telefone: { x: 58, y: 101 },
+  telefone: { x: 72, y: 101, ddd: 59 },
   email: { x: 242, y: 101 },
 };
 

@@ -149,8 +149,8 @@ export const MODELS: ModelDef[] = [
     },
     optionCoords: {
       esfera: {
-        Estadual: { x: 313, y: 216 },
-        Federal: { x: 361, y: 216 },
+        Estadual: { x: 313.5, y: 216, label: { x: 321, w: 29.5 } },
+        Federal: { x: 361, y: 216, label: { x: 368, w: 25.5 } },
       },
     },
   },

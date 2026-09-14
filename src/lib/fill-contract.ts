@@ -10,9 +10,19 @@ const CURRENCY_KEYS = new Set([
   "valorParcelas",
   "valorAdesao",
   "valorContrato",
+  "valorMensalidade",
+  "valorSetup",
+  "valorDiagnostico",
+  "taxaAdesao",
 ]);
 
-const DATE_KEYS = new Set(["dataEntrada", "dataPagamento", "dataExito", "dataVencimento"]);
+const DATE_KEYS = new Set([
+  "dataEntrada",
+  "dataPagamento",
+  "dataExito",
+  "dataVencimento",
+  "dataPrimeiraMensalidade",
+]);
 
 /** Prepara o texto que vai para o PDF (contratos já trazem "R$" impresso). */
 function textFor(key: string, raw: string) {
@@ -21,6 +31,16 @@ function textFor(key: string, raw: string) {
   if (DATE_KEYS.has(key)) return formatDateBr(raw);
   return raw;
 }
+
+/** Datas divididas pelas barras impressas no contrato: chave "campo#d|#m|#y". */
+function datePart(values: FormValues, key: string) {
+  const [base = "", part = ""] = key.split("#");
+  const iso = values[base] ?? "";
+  if (!iso) return "";
+  const [y = "", m = "", d = ""] = iso.split("-");
+  return part === "d" ? d : part === "m" ? m : y;
+}
+
 
 export async function fillContract(model: ModelDef, values: FormValues) {
   const bytes = await fetch(model.pdfUrl).then((r) => {
@@ -44,8 +64,9 @@ export async function fillContract(model: ModelDef, values: FormValues) {
   // Campos de texto
   for (const [key, place] of Object.entries(model.coords)) {
     if (key.startsWith("assinatura")) continue;
-    const value = textFor(key, values[key] ?? "");
+    const value = key.includes("#") ? datePart(values, key) : textFor(key, values[key] ?? "");
     if (!value) continue;
+
     if (place.ddd !== undefined) {
       // telefone: DDD dentro dos parênteses impressos, número depois
       const digits = value.replace(/\D/g, "");

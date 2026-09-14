@@ -64,8 +64,9 @@ export async function fillContract(model: ModelDef, values: FormValues) {
   // Campos de texto
   for (const [key, place] of Object.entries(model.coords)) {
     if (key.startsWith("assinatura")) continue;
-    const value = textFor(key, values[key] ?? "");
+    const value = key.includes("#") ? datePart(values, key) : textFor(key, values[key] ?? "");
     if (!value) continue;
+
     if (place.ddd !== undefined) {
       // telefone: DDD dentro dos parênteses impressos, número depois
       const digits = value.replace(/\D/g, "");

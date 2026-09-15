@@ -12,8 +12,9 @@ export type HistoryItem = {
 
 type Dados = Omit<HistoryItem, "id" | "createdAt">;
 
-export function useHistory() {
-  const { rows, carregando, salvar, remover } = useCloudRecords<Dados>("contrato");
+export function useHistory(habilitado = true) {
+  const { rows, carregando, salvar, remover } =
+    useCloudRecords<Dados>("contrato", habilitado);
 
   const history = useMemo<HistoryItem[]>(
     () =>
@@ -27,7 +28,11 @@ export function useHistory() {
     [rows],
   );
 
-  async function registrar(item: { modelId: string; contratante: string; values: FormValues }) {
+  async function registrar(item: {
+    modelId: string;
+    contratante: string;
+    values: FormValues;
+  }) {
     await salvar(crypto.randomUUID(), {
       modelId: item.modelId,
       contratante: item.contratante,
@@ -35,5 +40,10 @@ export function useHistory() {
     });
   }
 
-  return { history, carregando, registrar, remover };
+  return {
+    history,
+    carregando,
+    registrar,
+    remover,
+  };
 }

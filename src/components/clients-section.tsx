@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { consultarCnpj } from "@/lib/cnpj";
-import { loadClients, saveClients, type Client } from "@/lib/clients";
+import { useClients, type Client } from "@/lib/clients";
 import { maskCnpj } from "@/lib/format";
 
 type Filtro = "todos" | "atendidos" | "naoAtendidos";
@@ -16,20 +16,13 @@ function formatDateTime(iso: string) {
 }
 
 export function ClientsSection() {
-  const [clients, setClients] = useState<Client[]>([]);
+  const { clients, salvarCliente, remover } = useClients();
   const [adding, setAdding] = useState(false);
   const [cnpjInput, setCnpjInput] = useState("");
   const [buscando, setBuscando] = useState(false);
   const [erro, setErro] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("todos");
   const [busca, setBusca] = useState("");
-
-  useEffect(() => setClients(loadClients()), []);
-
-  const persist = (next: Client[]) => {
-    setClients(next);
-    saveClients(next);
-  };
 
   async function adicionar() {
     const digits = cnpjInput.replace(/\D/g, "");

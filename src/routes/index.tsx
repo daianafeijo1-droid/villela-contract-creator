@@ -138,13 +138,13 @@ function Index() {
 
   useEffect(() => {
     if (!totalAutomatico) return;
-    const entradaCents = currencyToCents(values.valorEntrada ?? "");
-    const parcelaCents = currencyToCents(values.valorParcelas ?? "");
-    const qtd = Number(values.qtdParcelas ?? "0") || 0;
+    const entradaCents = currencyToCents(values["valorEntrada"] ?? "");
+    const parcelaCents = currencyToCents(values["valorParcelas"] ?? "");
+    const qtd = Number(values["qtdParcelas"] ?? "0") || 0;
     const totalCents = entradaCents + parcelaCents * qtd;
     const totalFormatado = totalCents > 0 ? centsToCurrency(totalCents) : "";
-    setValues((v) => (v.valorTotal === totalFormatado ? v : { ...v, valorTotal: totalFormatado }));
-  }, [totalAutomatico, values.valorEntrada, values.valorParcelas, values.qtdParcelas]);
+    setValues((v) => (v["valorTotal"] === totalFormatado ? v : { ...v, valorTotal: totalFormatado }));
+  }, [totalAutomatico, values["valorEntrada"], values["valorParcelas"], values["qtdParcelas"]]);
 
   const setField = (field: FieldDef, raw: string) => {
     const masked = applyMask(field.mask, raw);

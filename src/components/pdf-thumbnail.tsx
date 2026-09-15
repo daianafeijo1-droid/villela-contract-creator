@@ -14,15 +14,18 @@ type Props = {
 
 /** Renderiza a 1ª página de um PDF como imagem (miniatura), sem a UI nativa do navegador. */
 export function PdfThumbnail({ url, width = 240, className = "", alt = "Miniatura do modelo" }: Props) {
-  const [src, setSrc] = useState<string | null>(cache.get(url) ?? null);
+  // Cache por URL + largura: evita reaproveitar uma miniatura pequena (90px)
+  // numa prévia grande (280px), o que deixava a imagem borrada.
+  const cacheKey = `${url}@${width}`;
+  const [src, setSrc] = useState<string | null>(cache.get(cacheKey) ?? null);
   const [status, setStatus] = useState<"ok" | "carregando" | "erro">(
-    cache.has(url) ? "ok" : "carregando",
+    cache.has(cacheKey) ? "ok" : "carregando",
   );
 
   useEffect(() => {
     let cancelado = false;
-    if (cache.has(url)) {
-      setSrc(cache.get(url)!);
+    if (cache.has(cacheKey)) {
+      setSrc(cache.get(cacheKey)!);
       setStatus("ok");
       return;
     }
@@ -59,7 +62,7 @@ export function PdfThumbnail({ url, width = 240, className = "", alt = "Miniatur
         await page.render({ canvas, canvasContext: ctx, viewport }).promise;
         const dataUrl = canvas.toDataURL("image/png");
         if (cancelado) return;
-        cache.set(url, dataUrl);
+        cache.set(cacheKey, dataUrl);
         setSrc(dataUrl);
         setStatus("ok");
       } catch (e) {
@@ -72,7 +75,7 @@ export function PdfThumbnail({ url, width = 240, className = "", alt = "Miniatur
     return () => {
       cancelado = true;
     };
-  }, [url, width]);
+  }, [cacheKey, url, width]);
 
   if (status === "erro") {
     return (

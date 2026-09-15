@@ -16,7 +16,7 @@ function formatDateTime(iso: string) {
 }
 
 export function ClientsSection() {
-  const { clients, salvarCliente, remover } = useClients();
+  const { clients, carregando, salvarCliente, remover } = useClients();
   const [adding, setAdding] = useState(false);
   const [cnpjInput, setCnpjInput] = useState("");
   const [buscando, setBuscando] = useState(false);
@@ -74,6 +74,14 @@ export function ClientsSection() {
     }
   }
 
+  async function removerComConfirmacao(c: Client) {
+    const ok = window.confirm(
+      `Remover ${c.nomeFantasia || c.razaoSocial || maskCnpj(c.cnpj)} da lista de clientes em atendimento? Essa ação não pode ser desfeita.`,
+    );
+    if (!ok) return;
+    await remover(c.id);
+  }
+
   async function toggleAtendido(id: string) {
     const alvo = clients.find((c) => c.id === id);
     if (!alvo) return;
@@ -87,13 +95,17 @@ export function ClientsSection() {
   const filtrados = useMemo(() => {
     const q = busca.trim().toLowerCase();
     const qDigits = q.replace(/\D/g, "");
-    return clients.filter((c) => {
+    const lista = clients.filter((c) => {
       if (filtro === "atendidos" && !c.atendido) return false;
       if (filtro === "naoAtendidos" && c.atendido) return false;
       if (!q) return true;
       const nome = `${c.razaoSocial} ${c.nomeFantasia}`.toLowerCase();
       return nome.includes(q) || (qDigits.length > 0 && c.cnpj.includes(qDigits));
     });
+    if (filtro !== "todos") return lista;
+    // Aversão à perda: quem ainda não foi atendido aparece primeiro, para
+    // não passar despercebido no meio da lista.
+    return [...lista].sort((a, b) => Number(a.atendido) - Number(b.atendido));
   }, [clients, filtro, busca]);
 
   const naoAtendidos = clients.filter((c) => !c.atendido).length;
@@ -109,8 +121,8 @@ export function ClientsSection() {
         </div>
         <div className="flex items-center gap-3">
           {naoAtendidos > 0 && (
-            <span className="rounded-full bg-pop/15 px-3 py-1.5 text-xs font-extrabold text-pop">
-              {naoAtendidos} não atendido(s)
+            <span className="badge-glass px-3 py-1.5 text-xs font-extrabold text-pop">
+              ⚠️ {naoAtendidos} cliente(s) esperando retorno — não deixe esfriar
             </span>
           )}
           <button type="button" onClick={() => setAdding((a) => !a)} className="btn-pop px-5 py-3 text-sm">
@@ -120,7 +132,7 @@ export function ClientsSection() {
       </div>
 
       {adding && (
-        <div className="mt-6 rounded-2xl border-2 border-ink/10 bg-cream/60 p-5">
+        <div className="block-card mt-6 p-5">
           <p className="text-sm font-bold text-ink">CNPJ do cliente</p>
           <div className="mt-2 flex flex-wrap gap-3">
             <input
@@ -168,8 +180,8 @@ export function ClientsSection() {
               onClick={() => setFiltro(value)}
               className={
                 filtro === value
-                  ? "rounded-2xl border-2 border-ink bg-ink px-4 py-2 text-sm font-bold text-cream"
-                  : "rounded-2xl border-2 border-ink/10 bg-cream/50 px-4 py-2 text-sm font-bold text-ink/60 transition hover:border-ink"
+                  ? "badge-glass rounded-2xl bg-ink/85! px-4 py-2 text-sm font-bold text-cream backdrop-blur-md"
+                  : "badge-glass rounded-2xl px-4 py-2 text-sm font-bold text-ink/60 transition hover:text-ink"
               }
             >
               {label}
@@ -179,7 +191,13 @@ export function ClientsSection() {
       </div>
 
       <div className="mt-6">
-        {filtrados.length === 0 ? (
+        {carregando ? (
+          <div className="space-y-3 py-2">
+            <div className="h-16 animate-pulse rounded-xl bg-ink/5" />
+            <div className="h-16 animate-pulse rounded-xl bg-ink/5" />
+            <div className="h-16 animate-pulse rounded-xl bg-ink/5" />
+          </div>
+        ) : filtrados.length === 0 ? (
           <p className="py-4 text-sm font-semibold text-ink/50">
             {clients.length === 0
               ? "Nenhum cliente adicionado ainda. Use o botão Adicionar Cliente."
@@ -242,7 +260,7 @@ export function ClientsSection() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => remover(c.id)}
+                    onClick={() => void removerComConfirmacao(c)}
                     className="rounded-xl border-2 border-ink/10 px-3 py-1.5 text-xs font-bold text-ink/50 transition hover:border-pop hover:text-pop"
                   >
                     Remover

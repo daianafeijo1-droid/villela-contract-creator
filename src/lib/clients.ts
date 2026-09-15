@@ -1,3 +1,6 @@
+import { useMemo } from "react";
+import { useCloudRecords } from "./cloud";
+
 export type Client = {
   id: string;
   cnpj: string;
@@ -12,19 +15,33 @@ export type Client = {
   statusChangedAt: string;
 };
 
-const KEY = "villela-clientes-atendimento";
+type Dados = Omit<Client, "id" | "addedAt">;
 
-export function loadClients(): Client[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as Client[]) : [];
-  } catch {
-    return [];
+export function useClients() {
+  const { rows, carregando, salvar, remover } = useCloudRecords<Dados>("cliente");
+
+  const clients = useMemo<Client[]>(
+    () =>
+      rows.map((r) => ({
+        id: r.chave,
+        addedAt: r.created_at,
+        cnpj: r.dados?.cnpj ?? r.chave,
+        razaoSocial: r.dados?.razaoSocial ?? "",
+        nomeFantasia: r.dados?.nomeFantasia ?? "",
+        situacaoCadastral: r.dados?.situacaoCadastral ?? "",
+        endereco: r.dados?.endereco ?? "",
+        telefone: r.dados?.telefone ?? "",
+        email: r.dados?.email ?? "",
+        atendido: Boolean(r.dados?.atendido),
+        statusChangedAt: r.dados?.statusChangedAt ?? r.updated_at,
+      })),
+    [rows],
+  );
+
+  async function salvarCliente(c: Client) {
+    const { id: _id, addedAt: _addedAt, ...dados } = c;
+    await salvar(c.cnpj, dados);
   }
-}
 
-export function saveClients(items: Client[]) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(KEY, JSON.stringify(items));
+  return { clients, carregando, salvarCliente, remover };
 }

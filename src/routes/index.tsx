@@ -21,7 +21,7 @@ import {
   maskUf,
 } from "@/lib/format";
 import { downloadPdf, fileNameFor, fillContract, type FormValues } from "@/lib/fill-contract";
-import { loadHistory, saveHistory, type HistoryItem } from "@/lib/history";
+import { useHistory, type HistoryItem } from "@/lib/history";
 import { consultarCnpj } from "@/lib/cnpj";
 import { ClientsSection } from "@/components/clients-section";
 import { PdfThumbnail } from "@/components/pdf-thumbnail";
@@ -117,13 +117,13 @@ function Index() {
   });
   const [mostrarModelo, setMostrarModelo] = useState(false);
   const [gerando, setGerando] = useState(false);
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const { history, registrar } = useHistory();
   const [cnpjStatus, setCnpjStatus] = useState<{
     kind: "idle" | "loading" | "ok" | "erro";
     msg: string;
   }>({ kind: "idle", msg: "" });
 
-  useEffect(() => setHistory(loadHistory()), []);
+  
 
   const model = useMemo(() => getModel(modelId), [modelId]);
   const allFields = useMemo(
@@ -138,13 +138,13 @@ function Index() {
 
   useEffect(() => {
     if (!totalAutomatico) return;
-    const entradaCents = currencyToCents(values.valorEntrada ?? "");
-    const parcelaCents = currencyToCents(values.valorParcelas ?? "");
-    const qtd = Number(values.qtdParcelas ?? "0") || 0;
+    const entradaCents = currencyToCents(values["valorEntrada"] ?? "");
+    const parcelaCents = currencyToCents(values["valorParcelas"] ?? "");
+    const qtd = Number(values["qtdParcelas"] ?? "0") || 0;
     const totalCents = entradaCents + parcelaCents * qtd;
     const totalFormatado = totalCents > 0 ? centsToCurrency(totalCents) : "";
-    setValues((v) => (v.valorTotal === totalFormatado ? v : { ...v, valorTotal: totalFormatado }));
-  }, [totalAutomatico, values.valorEntrada, values.valorParcelas, values.qtdParcelas]);
+    setValues((v) => (v["valorTotal"] === totalFormatado ? v : { ...v, valorTotal: totalFormatado }));
+  }, [totalAutomatico, values["valorEntrada"], values["valorParcelas"], values["qtdParcelas"]]);
 
   const setField = (field: FieldDef, raw: string) => {
     const masked = applyMask(field.mask, raw);
@@ -219,17 +219,12 @@ function Index() {
     try {
       const bytes = await fillContract(model, values);
       downloadPdf(bytes, fileNameFor(model, values));
-      const item: HistoryItem = {
-        id: crypto.randomUUID(),
+      await registrar({
         modelId: model.id,
         contratante: values["razaoSocial"] ?? "",
-        createdAt: new Date().toISOString(),
-        values: { ...values },
-      };
-      const next = [item, ...history];
-      setHistory(next);
-      saveHistory(next);
-      setStatus({ kind: "ok", msg: "Contrato gerado e baixado." });
+        values,
+      });
+      setStatus({ kind: "ok", msg: "Contrato gerado, baixado e salvo na nuvem." });
     } catch (err) {
       setStatus({
         kind: "erro",

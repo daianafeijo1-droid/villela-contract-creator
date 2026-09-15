@@ -1,4 +1,6 @@
+import { useMemo } from "react";
 import type { FormValues } from "./fill-contract";
+import { useCloudRecords } from "./cloud";
 
 export type HistoryItem = {
   id: string;
@@ -8,19 +10,30 @@ export type HistoryItem = {
   values: FormValues;
 };
 
-const KEY = "villela-contratos-historico";
+type Dados = Omit<HistoryItem, "id" | "createdAt">;
 
-export function loadHistory(): HistoryItem[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as HistoryItem[]) : [];
-  } catch {
-    return [];
+export function useHistory() {
+  const { rows, carregando, salvar, remover } = useCloudRecords<Dados>("contrato");
+
+  const history = useMemo<HistoryItem[]>(
+    () =>
+      rows.map((r) => ({
+        id: r.chave,
+        createdAt: r.created_at,
+        modelId: r.dados?.modelId ?? "",
+        contratante: r.dados?.contratante ?? "",
+        values: r.dados?.values ?? {},
+      })),
+    [rows],
+  );
+
+  async function registrar(item: { modelId: string; contratante: string; values: FormValues }) {
+    await salvar(crypto.randomUUID(), {
+      modelId: item.modelId,
+      contratante: item.contratante,
+      values: { ...item.values },
+    });
   }
-}
 
-export function saveHistory(items: HistoryItem[]) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(KEY, JSON.stringify(items.slice(0, 50)));
+  return { history, carregando, registrar, remover };
 }

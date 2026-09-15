@@ -64,7 +64,7 @@ export function ClientsSection() {
         addedAt: now,
         statusChangedAt: now,
       };
-      persist([item, ...clients]);
+      await salvarCliente(item);
       setCnpjInput("");
       setAdding(false);
     } catch {
@@ -74,17 +74,14 @@ export function ClientsSection() {
     }
   }
 
-  function toggleAtendido(id: string) {
-    const now = new Date().toISOString();
-    persist(
-      clients.map((c) =>
-        c.id === id ? { ...c, atendido: !c.atendido, statusChangedAt: now } : c,
-      ),
-    );
-  }
-
-  function remover(id: string) {
-    persist(clients.filter((c) => c.id !== id));
+  async function toggleAtendido(id: string) {
+    const alvo = clients.find((c) => c.id === id);
+    if (!alvo) return;
+    await salvarCliente({
+      ...alvo,
+      atendido: !alvo.atendido,
+      statusChangedAt: new Date().toISOString(),
+    });
   }
 
   const filtrados = useMemo(() => {

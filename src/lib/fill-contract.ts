@@ -4,6 +4,24 @@ import { formatDateBr, splitSignatureDate } from "./format";
 
 export type FormValues = Record<string, string>;
 
+// Cache em memória do PDF-modelo (bytes originais): evita rebaixar o mesmo
+// arquivo da rede toda vez que a equipe gera um contrato com o mesmo modelo.
+const modeloCache = new Map<string, Promise<ArrayBuffer>>();
+
+function carregarModelo(url: string): Promise<ArrayBuffer> {
+  let promessa = modeloCache.get(url);
+  if (!promessa) {
+    promessa = fetch(url).then((r) => {
+      if (!r.ok) throw new Error("Não foi possível carregar o modelo do contrato.");
+      return r.arrayBuffer();
+    });
+    // Se o download falhar, não deixa a falha "presa" no cache.
+    promessa.catch(() => modeloCache.delete(url));
+    modeloCache.set(url, promessa);
+  }
+  return promessa;
+}
+
 const CURRENCY_KEYS = new Set([
   "valorTotal",
   "valorEntrada",
@@ -43,10 +61,7 @@ function datePart(values: FormValues, key: string) {
 
 
 export async function fillContract(model: ModelDef, values: FormValues) {
-  const bytes = await fetch(model.pdfUrl).then((r) => {
-    if (!r.ok) throw new Error("Não foi possível carregar o modelo do contrato.");
-    return r.arrayBuffer();
-  });
+  const bytes = await carregarModelo(model.pdfUrl);
 
   const pdf = await PDFDocument.load(bytes);
   const font = await pdf.embedFont(StandardFonts.Helvetica);

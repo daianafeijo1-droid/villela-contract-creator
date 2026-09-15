@@ -23,8 +23,10 @@ import {
 import { downloadPdf, fileNameFor, fillContract, type FormValues } from "@/lib/fill-contract";
 import { useHistory, type HistoryItem } from "@/lib/history";
 import { consultarCnpj } from "@/lib/cnpj";
+import { useAuth } from "@/lib/auth";
 import { ClientsSection } from "@/components/clients-section";
 import { PdfThumbnail } from "@/components/pdf-thumbnail";
+import { LoginGate } from "@/components/login-gate";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -117,7 +119,8 @@ function Index() {
   });
   const [mostrarModelo, setMostrarModelo] = useState(false);
   const [gerando, setGerando] = useState(false);
-  const { history, registrar } = useHistory();
+  const { history, carregando: historicoCarregando, registrar } = useHistory();
+  const { user, loading: authLoading, entrar, sair } = useAuth();
   const [cnpjStatus, setCnpjStatus] = useState<{
     kind: "idle" | "loading" | "ok" | "erro";
     msg: string;
@@ -135,6 +138,38 @@ function Index() {
     const keys = new Set(model.financeFields.map((f) => f.key));
     return keys.has("valorTotal") && keys.has("valorEntrada") && keys.has("valorParcelas") && keys.has("qtdParcelas");
   }, [model]);
+
+  // Prova social: mostra o ritmo da equipe (só aparece pra quem está logado,
+  // já que o histórico exige login para ser lido).
+  const geradosSemana = useMemo(() => {
+    const seteDiasAtras = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    return history.filter((h) => new Date(h.createdAt).getTime() >= seteDiasAtras).length;
+  }, [history]);
+
+  // Ancoragem: destaca o modelo que a equipe mais gera, servindo de
+  // referência para quem está em dúvida sobre qual escolher.
+  const modeloMaisGerado = useMemo(() => {
+    if (history.length < 3) return null;
+    const contagem = new Map<string, number>();
+    for (const h of history) contagem.set(h.modelId, (contagem.get(h.modelId) ?? 0) + 1);
+    let melhor: string | null = null;
+    let max = 0;
+    for (const [id, n] of contagem) {
+      if (n > max) {
+        max = n;
+        melhor = id;
+      }
+    }
+    return melhor;
+  }, [history]);
+
+  // Efeito Zeigarnik: uma barra de progresso das etapas reforça o impulso
+  // de terminar o que já foi começado.
+  const progressoPercentual = useMemo(() => {
+    if (allFields.length === 0) return 0;
+    const preenchidos = allFields.filter((f) => (values[f.key] ?? "").trim().length > 0).length;
+    return Math.round((preenchidos / allFields.length) * 100);
+  }, [allFields, values]);
 
   useEffect(() => {
     if (!totalAutomatico) return;
@@ -219,12 +254,21 @@ function Index() {
     try {
       const bytes = await fillContract(model, values);
       downloadPdf(bytes, fileNameFor(model, values));
-      await registrar({
-        modelId: model.id,
-        contratante: values["razaoSocial"] ?? "",
-        values,
-      });
-      setStatus({ kind: "ok", msg: "Contrato gerado, baixado e salvo na nuvem." });
+      // O download já aconteceu: um problema para salvar o histórico não deve
+      // ser reportado como falha na geração do contrato.
+      try {
+        await registrar({
+          modelId: model.id,
+          contratante: values["razaoSocial"] ?? "",
+          values,
+        });
+        setStatus({ kind: "ok", msg: "Contrato gerado, baixado e salvo no histórico." });
+      } catch {
+        setStatus({
+          kind: "ok",
+          msg: "Contrato gerado e baixado. Não foi possível salvar no histórico agora.",
+        });
+      }
     } catch (err) {
       setStatus({
         kind: "erro",
@@ -246,7 +290,7 @@ function Index() {
   }
 
   return (
-    <div className="min-h-screen bg-cream">
+    <div className="min-h-screen">
       <div className="mx-auto max-w-5xl px-5 py-8">
         <header className="mb-8 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -262,11 +306,23 @@ function Index() {
               </p>
             </div>
           </div>
-          {aba === "contratos" && (
-            <a href="#historico" className="btn-pop px-5 py-3 text-sm">
-              Histórico ({history.length})
-            </a>
-          )}
+          <div className="flex items-center gap-3">
+            {user && (
+              <button
+                type="button"
+                onClick={() => void sair()}
+                title={user.email ?? ""}
+                className="badge-glass rounded-xl px-3 py-2 text-xs font-bold text-ink/60 transition hover:text-ink"
+              >
+                Sair
+              </button>
+            )}
+            {aba === "contratos" && (
+              <a href="#historico" className="btn-pop px-5 py-3 text-sm">
+                Histórico ({history.length})
+              </a>
+            )}
+          </div>
         </header>
 
         <div className="mb-6 flex flex-wrap gap-2">
@@ -282,8 +338,8 @@ function Index() {
               onClick={() => setAba(value)}
               className={
                 aba === value
-                  ? "rounded-2xl border-2 border-ink bg-ink px-5 py-2.5 text-sm font-extrabold text-cream"
-                  : "rounded-2xl border-2 border-ink/10 bg-cream/50 px-5 py-2.5 text-sm font-extrabold text-ink/60 transition hover:border-ink"
+                  ? "badge-glass rounded-2xl bg-ink/85! px-5 py-2.5 text-sm font-extrabold text-cream backdrop-blur-md"
+                  : "badge-glass rounded-2xl px-5 py-2.5 text-sm font-extrabold text-ink/60 transition hover:text-ink"
               }
             >
               {label}
@@ -291,15 +347,35 @@ function Index() {
           ))}
         </div>
 
-        {aba === "clientes" && <ClientsSection />}
+        {aba === "clientes" && (
+          <LoginGate
+            user={user}
+            authLoading={authLoading}
+            entrar={entrar}
+            title="Clientes em Atendimento"
+            description="Faça login com sua conta da equipe para ver e gerenciar os clientes."
+          >
+            <ClientsSection />
+          </LoginGate>
+        )}
 
         {aba === "contratos" && (
         <>
         <section className="block-card p-6 md:p-8">
-          <p className="text-xs font-extrabold tracking-[0.2em] text-pop uppercase">Passo 1 de 3</p>
-          <h1 className="mt-1 mb-5 text-4xl leading-[1.05] font-extrabold text-ink md:text-5xl">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs font-extrabold tracking-[0.2em] text-pop uppercase">Passo 1 de 3</p>
+            {geradosSemana > 0 && (
+              <span className="badge-glass px-3 py-1.5 text-xs font-extrabold text-ink/70">
+                🔥 {geradosSemana} contrato(s) gerado(s) pela equipe nos últimos 7 dias
+              </span>
+            )}
+          </div>
+          <h1 className="mt-1 mb-3 text-4xl leading-[1.05] font-extrabold text-ink md:text-5xl">
             Escolha o seu <span className="text-violet">modelo</span>
           </h1>
+          <div className="progress-track mb-5">
+            <div className="progress-fill" style={{ width: `${progressoPercentual}%` }} />
+          </div>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
             {MODELS.map((m) => {
               const ativo = m.id === modelId;
@@ -311,16 +387,31 @@ function Index() {
                     setModelId(m.id);
                     setErrors({});
                     setStatus({ kind: "idle", msg: "" });
+                    // Evita que campos financeiros de outro modelo (mesma
+                    // chave, sentido diferente) fiquem preenchidos por engano.
+                    const manter = new Set(CONTRATANTE_FIELDS.map((f) => f.key));
+                    setValues((v) => {
+                      const next: FormValues = {};
+                      for (const [key, val] of Object.entries(v)) {
+                        if (manter.has(key)) next[key] = val;
+                      }
+                      return next;
+                    });
                   }}
                   className={
                     ativo
-                      ? "relative rounded-2xl border-4 border-ink bg-card p-4 text-left shadow-[4px_4px_0_var(--brand)]"
-                      : "rounded-2xl border-2 border-ink/10 bg-cream/50 p-4 text-left transition hover:-translate-y-1 hover:border-ink"
+                      ? "badge-glass relative rounded-2xl p-4 text-left ring-2 ring-violet/60"
+                      : "badge-glass rounded-2xl p-4 text-left opacity-80 transition hover:-translate-y-1 hover:opacity-100"
                   }
                 >
                   {ativo && (
-                    <span className="absolute -top-3 right-3 rounded-full bg-pop px-2 py-0.5 text-[10px] font-extrabold text-cream">
+                    <span className="badge-glass absolute -top-3 right-3 bg-pop/90! px-2 py-0.5 text-[10px] font-extrabold text-cream">
                       Ativo
+                    </span>
+                  )}
+                  {!ativo && m.id === modeloMaisGerado && (
+                    <span className="badge-glass absolute -top-3 left-3 px-2 py-0.5 text-[10px] font-extrabold text-violet">
+                      Mais usado
                     </span>
                   )}
                   <div className="mb-3 flex items-center gap-2">
@@ -342,11 +433,11 @@ function Index() {
             })}
           </div>
 
-          <div className="mt-5 flex items-center gap-4 border-t-2 border-ink/10 pt-5">
+          <div className="mt-5 flex items-center gap-4 border-t border-ink/10 pt-5">
             <button
               type="button"
               onClick={() => setMostrarModelo(true)}
-              className="group relative shrink-0 overflow-hidden rounded-xl border-2 border-ink/10 transition hover:border-ink hover:shadow-[3px_3px_0_var(--brand)]"
+              className="group badge-glass relative shrink-0 overflow-hidden p-0"
               title="Clique para ampliar e ler o contrato"
             >
               <PdfThumbnail url={model.pdfUrl} width={280} className="h-[196px] w-[144px]" />
@@ -366,11 +457,11 @@ function Index() {
 
         {mostrarModelo && (
           <div
-            className="fixed inset-0 z-50 grid place-items-center bg-ink/60 p-4"
+            className="fixed inset-0 z-50 grid place-items-center bg-ink/50 p-4 backdrop-blur-sm"
             onClick={() => setMostrarModelo(false)}
           >
             <div
-              className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl border-2 border-ink bg-cream p-4 shadow-[6px_6px_0_var(--brand)] md:max-w-3xl"
+              className="block-card max-h-[92vh] w-full max-w-2xl overflow-y-auto p-4 md:max-w-3xl"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="mb-3 flex items-center justify-between">
@@ -530,21 +621,33 @@ function Index() {
           </div>
         </div>
 
+        <LoginGate
+          user={user}
+          authLoading={authLoading}
+          entrar={entrar}
+          title="Histórico de Contratos"
+          description="Faça login para ver e baixar novamente os contratos já gerados."
+        >
         <section id="historico" className="block-card mt-6 p-6 md:p-8">
           <div className="mb-5 flex items-center justify-between">
             <div>
               <p className="text-xs font-extrabold tracking-[0.2em] text-coral uppercase">
                 Passo 3 de 3
               </p>
-              <h2 className="text-3xl font-extrabold text-ink">Histórico local</h2>
+              <h2 className="text-3xl font-extrabold text-ink">Histórico</h2>
             </div>
-            <span className="rounded-full border-2 border-ink/10 bg-cream px-3 py-1.5 text-xs font-bold text-ink">
+            <span className="badge-glass px-3 py-1.5 text-xs font-bold text-ink">
               {history.length} contratos
             </span>
           </div>
-          {history.length === 0 ? (
+          {historicoCarregando ? (
+            <div className="space-y-3 py-2">
+              <div className="h-14 animate-pulse rounded-xl bg-ink/5" />
+              <div className="h-14 animate-pulse rounded-xl bg-ink/5" />
+            </div>
+          ) : history.length === 0 ? (
             <p className="py-4 text-sm font-semibold text-ink/50">
-              Nenhum contrato gerado ainda. Os contratos gerados neste navegador aparecem aqui.
+              Nenhum contrato gerado ainda. Os contratos gerados pela equipe aparecem aqui.
             </p>
           ) : (
             <div className="divide-y divide-ink/10">
@@ -577,6 +680,7 @@ function Index() {
             </div>
           )}
         </section>
+        </LoginGate>
         </>
         )}
       </div>

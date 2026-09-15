@@ -91,6 +91,16 @@
 
   body {
     background-color: var(--color-background);
+    /* "Papel de parede" atrás do vidro — sem isso, o desfoque do glass não
+       tem nada colorido para revelar (mesma lógica do wallpaper por trás
+       do Liquid Glass no iOS/macOS). */
+    background-image:
+      radial-gradient(46rem 32rem at 8% -12%, oklch(0.842 0.156 90.5 / 38%), transparent 60%),
+      radial-gradient(40rem 32rem at 102% -6%, oklch(0.598 0.211 285 / 30%), transparent 58%),
+      radial-gradient(42rem 36rem at 90% 105%, oklch(0.687 0.13 173 / 26%), transparent 58%),
+      radial-gradient(32rem 28rem at -4% 100%, oklch(0.723 0.152 38 / 24%), transparent 55%);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
     color: var(--color-foreground);
     font-family: var(--font-sans);
   }
@@ -103,33 +113,60 @@
   }
 }
 
-/* Cartão com contorno e sombra dura da direção escolhida */
+/*
+ * Liquid Glass — material translúcido inspirado no iOS 26/macOS Tahoe:
+ * fundo semi-transparente + backdrop-blur, borda mais clara no topo
+ * (highlight especular estático, já que não dá pra simular reação ao
+ * movimento em CSS puro) e sombra suave em vez da sombra "bloco" dura.
+ * Texto sempre fica sobre a camada opaca do card, nunca direto no vidro.
+ */
 @utility block-card {
-  border-radius: 2rem;
-  background-color: var(--card);
-  border: 4px solid var(--ink);
-  box-shadow: 0 12px 0 var(--ink);
+  position: relative;
+  border-radius: 1.75rem;
+  background-color: oklch(1 0 0 / 55%);
+  border: 1px solid oklch(1 0 0 / 55%);
+  border-top-color: oklch(1 0 0 / 85%);
+  backdrop-filter: blur(28px) saturate(165%);
+  -webkit-backdrop-filter: blur(28px) saturate(165%);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 75%),
+    0 24px 48px -28px oklch(0.204 0.011 285 / 35%),
+    0 2px 10px oklch(0.204 0.011 285 / 6%);
 }
 
 @utility block-card-dark {
-  border-radius: 2rem;
-  background-color: var(--ink);
+  position: relative;
+  border-radius: 1.75rem;
+  background-color: oklch(0.204 0.011 285 / 64%);
   color: var(--cream);
-  box-shadow: 0 12px 0 oklch(0 0 0);
+  border: 1px solid oklch(1 0 0 / 12%);
+  border-top-color: oklch(1 0 0 / 30%);
+  backdrop-filter: blur(28px) saturate(165%);
+  -webkit-backdrop-filter: blur(28px) saturate(165%);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 14%),
+    0 24px 48px -28px oklch(0 0 0 / 55%);
 }
 
 @utility field-input {
   width: 100%;
   border-radius: 1rem;
-  border: 2px solid oklch(0.204 0.011 285 / 15%);
-  background-color: oklch(0.978 0.031 92 / 40%);
+  border: 1px solid oklch(0.204 0.011 285 / 14%);
+  border-top-color: oklch(1 0 0 / 70%);
+  background-color: oklch(1 0 0 / 38%);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
   padding: 0.75rem 1rem;
   font-weight: 600;
   color: var(--ink);
   outline: none;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
 
   &:focus {
     border-color: var(--violet);
+    background-color: oklch(1 0 0 / 60%);
   }
 
   &::placeholder {
@@ -140,15 +177,22 @@
 @utility field-input-dark {
   width: 100%;
   border-radius: 1rem;
-  border: 2px solid oklch(1 0 0 / 15%);
-  background-color: oklch(1 0 0 / 5%);
+  border: 1px solid oklch(1 0 0 / 16%);
+  border-top-color: oklch(1 0 0 / 32%);
+  background-color: oklch(1 0 0 / 8%);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
   padding: 0.75rem 1rem;
   font-weight: 700;
   color: oklch(1 0 0);
   outline: none;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
 
   &:focus {
     border-color: var(--brand);
+    background-color: oklch(1 0 0 / 14%);
   }
 
   &::placeholder {
@@ -157,33 +201,96 @@
 }
 
 @utility btn-brand {
-  background-color: var(--brand);
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, oklch(0.89 0.15 90.5 / 96%), oklch(0.79 0.17 90.5 / 96%));
   color: var(--ink);
   font-family: var(--font-display);
   font-weight: 800;
   border-radius: 1rem;
-  box-shadow: 0 8px 0 oklch(0.68 0.13 90);
-  transition: transform 0.15s ease;
+  border: 1px solid oklch(1 0 0 / 55%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 75%),
+    0 14px 28px -12px oklch(0.68 0.13 90 / 60%);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(115deg, transparent 35%, oklch(1 0 0 / 45%) 50%, transparent 65%);
+    transform: translateX(-120%);
+    transition: transform 0.6s ease;
+  }
 
   &:hover:not(:disabled) {
     transform: translateY(-2px);
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 85%),
+      0 18px 32px -12px oklch(0.68 0.13 90 / 70%);
+  }
+
+  &:hover:not(:disabled)::after {
+    transform: translateX(120%);
   }
 
   &:disabled {
     opacity: 0.55;
-    box-shadow: 0 8px 0 oklch(0.68 0.13 90 / 50%);
+    box-shadow: inset 0 1px 0 oklch(1 0 0 / 40%);
   }
 }
 
 @utility btn-pop {
-  background-color: var(--pop);
+  position: relative;
+  background: linear-gradient(180deg, oklch(0.74 0.2 2.5 / 96%), oklch(0.63 0.21 2.5 / 96%));
   color: oklch(1 0 0);
   font-weight: 700;
   border-radius: 1rem;
-  box-shadow: 0 8px 0 oklch(0.53 0.18 2.5);
-  transition: transform 0.15s ease;
+  border: 1px solid oklch(1 0 0 / 30%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 45%),
+    0 14px 28px -14px oklch(0.53 0.18 2.5 / 65%);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 
   &:hover {
     transform: translateY(-2px);
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 55%),
+      0 18px 32px -14px oklch(0.53 0.18 2.5 / 75%);
   }
+}
+
+/* Selo "vidro" pequeno para badges/tags (prova social, ancoragem etc.) */
+@utility badge-glass {
+  border-radius: 999px;
+  border: 1px solid oklch(1 0 0 / 55%);
+  border-top-color: oklch(1 0 0 / 85%);
+  background-color: oklch(1 0 0 / 45%);
+  backdrop-filter: blur(10px) saturate(160%);
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
+}
+
+/* Trilha de progresso das 3 etapas (efeito Zeigarnik: reforça o impulso
+   de terminar algo já começado). */
+@utility progress-track {
+  border-radius: 999px;
+  height: 0.5rem;
+  background-color: oklch(0.204 0.011 285 / 8%);
+  border: 1px solid oklch(1 0 0 / 50%);
+  overflow: hidden;
+}
+
+@utility progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--violet), var(--brand));
+  transition: width 0.35s ease;
 }

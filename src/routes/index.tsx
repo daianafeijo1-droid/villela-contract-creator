@@ -467,32 +467,38 @@ function Index() {
   return (
     <div className="min-h-screen">
       <div className="mx-auto max-w-5xl px-5 py-8">
-        <header className="mb-8 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="grid size-12 -rotate-6 place-items-center rounded-2xl bg-ink">
-              <span className="font-display text-2xl font-extrabold text-brand">
+        <header className="topbar-glass mb-8 flex items-center justify-between gap-3 px-4 py-3 sm:px-5">
+          <div className="topbar-glow">
+            <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-violet/70 to-transparent" />
+            <div className="absolute -top-10 left-10 h-20 w-56 rounded-full bg-violet/20 blur-2xl" />
+          </div>
+
+          <div className="relative flex items-center gap-3">
+            <span className="relative grid size-11 shrink-0 place-items-center rounded-xl bg-ink shadow-sm ring-1 ring-violet/40">
+              <span className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-tr from-transparent via-transparent to-violet/45" />
+              <span className="font-display relative text-xl font-extrabold text-brand">
                 V
               </span>
-            </div>
+            </span>
 
-            <div>
-              <p className="font-display text-xl leading-none font-extrabold text-ink">
+            <div className="hidden leading-tight sm:block">
+              <p className="font-display text-lg font-extrabold text-ink">
                 Grupo Villela
               </p>
 
-              <p className="text-xs font-semibold tracking-wide text-ink/50">
+              <p className="text-[11px] font-semibold tracking-wide text-ink/50">
                 Estúdio de Contratos
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="relative flex items-center gap-2">
             {user && (
               <button
                 type="button"
                 onClick={() => void sair()}
                 title={user.email ?? ""}
-                className="badge-glass rounded-xl px-3 py-2 text-xs font-bold text-ink/60 transition hover:text-ink"
+                className="rounded-full px-3 py-2 text-xs font-bold text-ink/60 transition hover:bg-coral/10 hover:text-coral"
               >
                 Sair
               </button>
@@ -501,7 +507,7 @@ function Index() {
             {aba === "contratos" && (
               <a
                 href="#historico"
-                className="btn-pop px-5 py-3 text-sm"
+                className="btn-pop px-5 py-2.5 text-sm"
               >
                 Histórico ({history.length})
               </a>
@@ -821,7 +827,7 @@ function Index() {
                           }
                           className={`field-input mt-1.5 ${
                             errors[f.key]
-                              ? "border-pop!"
+                              ? "border-destructive!"
                               : ""
                           }`}
                         />
@@ -832,7 +838,7 @@ function Index() {
                             className={`mt-1 text-[11px] font-bold ${
                               cnpjStatus.kind ===
                               "erro"
-                                ? "text-pop"
+                                ? "text-destructive"
                                 : cnpjStatus.kind ===
                                     "ok"
                                   ? "text-mint"
@@ -907,7 +913,7 @@ function Index() {
                           </div>
 
                           {errors[f.key] && (
-                            <p className="mt-1 text-[11px] font-bold text-pop">
+                            <p className="mt-1 text-[11px] font-bold text-destructive">
                               Selecione uma opção
                             </p>
                           )}
@@ -953,7 +959,7 @@ function Index() {
                             }
                             className={`field-input-dark mt-1.5 ${
                               errors[f.key]
-                                ? "border-pop!"
+                                ? "border-destructive!"
                                 : ""
                             } ${
                               totalAutomatico &&
@@ -983,7 +989,7 @@ function Index() {
                   <p
                     className={`mt-3 text-center text-[12px] font-bold ${
                       status.kind === "erro"
-                        ? "text-pop"
+                        ? "text-destructive"
                         : "text-mint"
                     }`}
                   >

@@ -149,7 +149,36 @@ function Index() {
     history,
     carregando: historicoCarregando,
     registrar,
+    remover: removerDoHistorico,
   } = useHistory(!!user && !authLoading);
+
+  // Histórico dividido: contratos gerados pela equipe logada e
+  // contratos gerados por terceiros (visitantes sem login), que só
+  // aparecem para quem está autenticado.
+  const [historicoAba, setHistoricoAba] = useState<"equipe" | "visitante">(
+    "equipe",
+  );
+
+  const meusContratos = useMemo(
+    () => history.filter((h) => h.origem !== "visitante"),
+    [history],
+  );
+
+  const contratosDeTerceiros = useMemo(
+    () => history.filter((h) => h.origem === "visitante"),
+    [history],
+  );
+
+  const listaHistoricoAtual =
+    historicoAba === "equipe" ? meusContratos : contratosDeTerceiros;
+
+  async function removerDoHistoricoComConfirmacao(item: HistoryItem) {
+    const ok = window.confirm(
+      `Remover "${item.contratante || "este contrato"}" do histórico? Essa ação não pode ser desfeita.`,
+    );
+    if (!ok) return;
+    await removerDoHistorico(item.id);
+  }
 
   const [cnpjStatus, setCnpjStatus] = useState<{
     kind: "idle" | "loading" | "ok" | "erro";
@@ -416,6 +445,7 @@ function Index() {
           contratante:
             values["razaoSocial"] ?? "",
           values,
+          origem: user ? "equipe" : "visitante",
         });
 
         setStatus({
@@ -1027,20 +1057,58 @@ function Index() {
                   </span>
                 </div>
 
+                <div className="mb-5 flex flex-wrap gap-2">
+                  {(
+                    [
+                      [
+                        "equipe",
+                        `Meus Contratos (${meusContratos.length})`,
+                      ],
+                      [
+                        "visitante",
+                        `Gerados por Terceiros (${contratosDeTerceiros.length})`,
+                      ],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() =>
+                        setHistoricoAba(value)
+                      }
+                      className={
+                        historicoAba === value
+                          ? "badge-glass rounded-2xl bg-ink/85! px-4 py-2 text-sm font-bold text-cream backdrop-blur-md"
+                          : "badge-glass rounded-2xl px-4 py-2 text-sm font-bold text-ink/60 transition hover:text-ink"
+                      }
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {historicoAba === "visitante" && (
+                  <p className="mb-4 text-xs font-semibold text-ink/40">
+                    Contratos gerados sem login (por quem recebeu o link do
+                    Estúdio de Contratos). Visível somente para a equipe
+                    autenticada.
+                  </p>
+                )}
+
                 {historicoCarregando ? (
                   <div className="space-y-3 py-2">
                     <div className="h-14 animate-pulse rounded-xl bg-ink/5" />
                     <div className="h-14 animate-pulse rounded-xl bg-ink/5" />
                   </div>
-                ) : history.length === 0 ? (
+                ) : listaHistoricoAtual.length === 0 ? (
                   <p className="py-4 text-sm font-semibold text-ink/50">
-                    Nenhum contrato gerado ainda.
-                    Os contratos gerados pela
-                    equipe aparecem aqui.
+                    {historicoAba === "equipe"
+                      ? "Nenhum contrato gerado pela equipe ainda."
+                      : "Nenhum contrato gerado por terceiros ainda."}
                   </p>
                 ) : (
                   <div className="divide-y divide-ink/10">
-                    {history.map((item) => {
+                    {listaHistoricoAtual.map((item) => {
                       const m = getModel(
                         item.modelId,
                       );
@@ -1079,17 +1147,32 @@ function Index() {
                             </p>
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() =>
-                              baixarNovamente(
-                                item,
-                              )
-                            }
-                            className="shrink-0 rounded-xl bg-ink px-4 py-2.5 text-sm font-bold text-cream transition hover:bg-violet"
-                          >
-                            Baixar de novo
-                          </button>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                baixarNovamente(
+                                  item,
+                                )
+                              }
+                              className="rounded-xl bg-ink px-4 py-2.5 text-sm font-bold text-cream transition hover:bg-violet"
+                            >
+                              Baixar de novo
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void removerDoHistoricoComConfirmacao(
+                                  item,
+                                )
+                              }
+                              title="Remover do histórico"
+                              className="rounded-xl border-2 border-ink/10 px-3 py-2.5 text-xs font-bold text-ink/50 transition hover:border-destructive hover:text-destructive"
+                            >
+                              Remover
+                            </button>
+                          </div>
                         </div>
                       );
                     })}

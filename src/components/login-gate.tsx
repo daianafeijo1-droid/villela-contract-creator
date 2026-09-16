@@ -100,7 +100,7 @@ export function LoginGate({
               ? "Criar acesso e entrar"
               : "Entrar"}
         </button>
-        {erro && <p className="text-[11px] font-bold text-pop">{erro}</p>}
+        {erro && <p className="text-[11px] font-bold text-destructive">{erro}</p>}
         <button
           type="button"
           onClick={() => {

@@ -30,6 +30,7 @@ import { useHistory, type HistoryItem } from "@/lib/history";
 import { consultarCnpj } from "@/lib/cnpj";
 import { useAuth } from "@/lib/auth";
 import { ClientsSection } from "@/components/clients-section";
+import type { Client } from "@/lib/clients";
 import { PdfThumbnail } from "@/components/pdf-thumbnail";
 import { LoginGate } from "@/components/login-gate";
 
@@ -178,6 +179,45 @@ function Index() {
     );
     if (!ok) return;
     await removerDoHistorico(item.id);
+  }
+
+  // Leva os dados já salvos do cliente (aba Clientes em Atendimento) para o
+  // formulário de contrato, evitando redigitar tudo de novo. Data de
+  // assinatura e campos financeiros ficam em branco: são específicos de
+  // cada contrato e precisam ser conferidos na hora.
+  function gerarContratoDoCliente(cliente: Client) {
+    setValues((v) => {
+      const next: FormValues = { ...v };
+
+      const put = (key: string, val: string, mask?: MaskKind) => {
+        next[key] = val ? applyMask(mask, val) : "";
+      };
+
+      put("razaoSocial", cliente.razaoSocial);
+      put("cpfCnpj", cliente.cnpj, "cpfCnpj");
+      put("responsavel", cliente.responsavel);
+      put("cpfResponsavel", cliente.cpfResponsavel, "cpf");
+      put("endereco", cliente.endereco);
+      put("bairro", cliente.bairro);
+      put("municipio", cliente.municipio);
+      put("uf", cliente.uf, "uf");
+      put("cep", cliente.cep, "cep");
+      put("telefone", cliente.telefone, "phone");
+      put("email", cliente.email);
+
+      return next;
+    });
+
+    setErrors({});
+    setAba("contratos");
+    setStatus({
+      kind: "ok",
+      msg: `Dados de ${cliente.nomeFantasia || cliente.razaoSocial} preenchidos. Escolha o modelo e confira os campos antes de gerar.`,
+    });
+
+    requestAnimationFrame(() => {
+      document.getElementById("passo-1")?.scrollIntoView({ behavior: "smooth" });
+    });
   }
 
   const [cnpjStatus, setCnpjStatus] = useState<{
@@ -579,13 +619,13 @@ function Index() {
             title="Clientes em Atendimento"
             description="Faça login com sua conta da equipe para ver e gerenciar os clientes."
           >
-            <ClientsSection />
+            <ClientsSection onGerarContrato={gerarContratoDoCliente} />
           </LoginGate>
         )}
 
         {aba === "contratos" && (
           <>
-            <section className="block-card p-6 md:p-8">
+            <section id="passo-1" className="block-card p-6 md:p-8">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-xs font-extrabold tracking-[0.2em] text-pop uppercase">
                   Passo 1 de 3

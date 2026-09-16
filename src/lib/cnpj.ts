@@ -19,8 +19,32 @@ export async function consultarCnpj(cnpj: string): Promise<CnpjData | null> {
   const digits = onlyDigits(cnpj);
   if (digits.length !== 14) return null;
 
-  const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`);
-  if (!res.ok) return null;
+  // A consulta pública às vezes demora ou falha momentaneamente:
+  // usamos tempo limite e uma segunda tentativa antes de desistir.
+  async function buscar(): Promise<Response | null> {
+    const controller = new AbortController();
+    const limite = setTimeout(() => controller.abort(), 12000);
+    try {
+      return await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`, {
+        signal: controller.signal,
+        headers: { Accept: "application/json" },
+      });
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(limite);
+    }
+  }
+
+  let res = await buscar();
+  // 404 = CNPJ inexistente (não faz sentido tentar de novo).
+  if (!res || (!res.ok && res.status !== 404)) {
+    await new Promise((r) => setTimeout(r, 800));
+    res = await buscar();
+  }
+  if (!res) throw new Error("Consulta de CNPJ indisponível no momento.");
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error("Consulta de CNPJ indisponível no momento.");
   const d = (await res.json()) as Record<string, unknown>;
   const s = (k: string) => (typeof d[k] === "string" ? (d[k] as string).trim() : "");
 

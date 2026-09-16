@@ -141,6 +141,7 @@ function Index() {
     user,
     loading: authLoading,
     entrar,
+    criarAcesso,
     sair,
   } = useAuth();
 
@@ -538,6 +539,7 @@ function Index() {
             user={user}
             authLoading={authLoading}
             entrar={entrar}
+            criarAcesso={criarAcesso}
             title="Clientes em Atendimento"
             description="Faça login com sua conta da equipe para ver e gerenciar os clientes."
           >
@@ -995,6 +997,7 @@ function Index() {
               user={user}
               authLoading={authLoading}
               entrar={entrar}
+            criarAcesso={criarAcesso}
               title="Histórico de Contratos"
               description="Faça login para ver e baixar novamente os contratos já gerados."
             >

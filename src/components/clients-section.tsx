@@ -67,8 +67,12 @@ export function ClientsSection() {
       await salvarCliente(item);
       setCnpjInput("");
       setAdding(false);
-    } catch {
-      setErro("Não foi possível consultar o CNPJ agora.");
+    } catch (e) {
+      setErro(
+        e instanceof Error
+          ? e.message
+          : "Não foi possível consultar o CNPJ agora.",
+      );
     } finally {
       setBuscando(false);
     }

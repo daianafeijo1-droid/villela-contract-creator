@@ -17,20 +17,26 @@ export type Registro<T> = {
  * Histórico de contratos e clientes usam a mesma tabela (campo `tipo`),
  * e a coluna `chave` garante que não haja registros duplicados.
  *
- * `habilitado` controla se o hook pode consultar o Supabase.
- * Isso evita consultas ao histórico antes da autenticação do usuário.
+ * `podeLer` controla apenas a LEITURA (consulta + tempo real), porque as
+ * políticas de segurança só liberam consulta para quem está logado.
+ * A gravação é sempre tentada: visitantes sem login podem registrar o
+ * contrato que acabaram de gerar.
+ *
+ * `modoSalvar` = "insert" para registros com chave nova (histórico) e
+ * "upsert" quando a mesma chave é atualizada (clientes).
  */
 export function useCloudRecords<T>(
   tipo: Tipo,
-  habilitado = true,
+  podeLer = true,
+  modoSalvar: "insert" | "upsert" = "upsert",
 ) {
   const [rows, setRows] = useState<Registro<T>[]>([]);
-  const [carregando, setCarregando] = useState(habilitado);
+  const [carregando, setCarregando] = useState(podeLer);
   const ativo = useRef(true);
 
   const carregar = useCallback(async () => {
-    // Não consulta o Supabase quando o recurso está desabilitado.
-    if (!habilitado) {
+    // Sem permissão de leitura (visitante sem login), não consulta.
+    if (!podeLer) {
       setRows([]);
       setCarregando(false);
       return;
@@ -57,13 +63,12 @@ export function useCloudRecords<T>(
     }
 
     setCarregando(false);
-  }, [tipo, habilitado]);
+  }, [tipo, podeLer]);
 
   useEffect(() => {
     ativo.current = true;
 
-    // Se não estiver habilitado, não cria consulta nem realtime.
-    if (!habilitado) {
+    if (!podeLer) {
       setRows([]);
       setCarregando(false);
 
@@ -94,29 +99,23 @@ export function useCloudRecords<T>(
       ativo.current = false;
       void supabase.removeChannel(channel);
     };
-  }, [tipo, habilitado, carregar]);
+  }, [tipo, podeLer, carregar]);
 
   const salvar = useCallback(
     async (chave: string, dados: T) => {
-      if (!habilitado) {
-        throw new Error(
-          "Não é possível salvar registros enquanto o recurso está desabilitado.",
-        );
-      }
+      const registro = {
+        tipo,
+        chave,
+        dados: dados as never,
+        updated_at: new Date().toISOString(),
+      };
 
-      const { error } = await supabase
-        .from("registros")
-        .upsert(
-          {
-            tipo,
-            chave,
-            dados: dados as never,
-            updated_at: new Date().toISOString(),
-          },
-          {
-            onConflict: "tipo,chave",
-          },
-        );
+      const { error } =
+        modoSalvar === "insert"
+          ? await supabase.from("registros").insert(registro)
+          : await supabase
+              .from("registros")
+              .upsert(registro, { onConflict: "tipo,chave" });
 
       if (error) {
         console.error(
@@ -126,19 +125,13 @@ export function useCloudRecords<T>(
         throw new Error(error.message);
       }
 
-      await carregar();
+      if (podeLer) await carregar();
     },
-    [tipo, habilitado, carregar],
+    [tipo, modoSalvar, podeLer, carregar],
   );
 
   const remover = useCallback(
     async (chave: string) => {
-      if (!habilitado) {
-        throw new Error(
-          "Não é possível remover registros enquanto o recurso está desabilitado.",
-        );
-      }
-
       const { error } = await supabase
         .from("registros")
         .delete()
@@ -153,9 +146,9 @@ export function useCloudRecords<T>(
         throw new Error(error.message);
       }
 
-      await carregar();
+      if (podeLer) await carregar();
     },
-    [tipo, habilitado, carregar],
+    [tipo, podeLer, carregar],
   );
 
   return {

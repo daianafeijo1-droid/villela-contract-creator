@@ -37,15 +37,15 @@ import { LoginGate } from "@/components/login-gate";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Estúdio de Contratos | Grupo Villela" },
+      { title: "Estúdio de Contratos | Daiana Feijó" },
       {
         name: "description",
         content:
-          "Gere contratos do Grupo Villela em PDF a partir de um formulário: Regularize Aqui, Renegocie Bancário, Recupere Aqui e Renegocie Empresarial.",
+          "Gere contratos do Daiana Feijó em PDF a partir de um formulário: Regularize Aqui, Renegocie Bancário, Recupere Aqui e Renegocie Empresarial.",
       },
       {
         property: "og:title",
-        content: "Estúdio de Contratos | Grupo Villela",
+        content: "Estúdio de Contratos | Daiana Feijó",
       },
       {
         property: "og:description",
@@ -553,7 +553,7 @@ function Index() {
 
             <div className="hidden leading-tight sm:block">
               <p className="font-display text-lg font-extrabold text-ink">
-                Grupo Villela
+                Daiana Feijó
               </p>
 
               <p className="text-[11px] font-semibold tracking-wide text-ink/50">

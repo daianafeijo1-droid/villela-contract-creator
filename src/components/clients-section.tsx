@@ -125,7 +125,7 @@ export function ClientsSection() {
         </div>
         <div className="flex items-center gap-3">
           {naoAtendidos > 0 && (
-            <span className="badge-glass px-3 py-1.5 text-xs font-extrabold text-pop">
+            <span className="badge-glass px-3 py-1.5 text-xs font-extrabold text-coral">
               ⚠️ {naoAtendidos} cliente(s) esperando retorno — não deixe esfriar
             </span>
           )}
@@ -156,7 +156,7 @@ export function ClientsSection() {
               {buscando ? "Consultando..." : "Consultar e Adicionar"}
             </button>
           </div>
-          <p className={`mt-2 text-[11px] font-bold ${erro ? "text-pop" : "text-ink/45"}`}>
+          <p className={`mt-2 text-[11px] font-bold ${erro ? "text-destructive" : "text-ink/45"}`}>
             {erro || "Os dados públicos do CNPJ preenchem a ficha automaticamente."}
           </p>
         </div>
@@ -223,7 +223,7 @@ export function ClientsSection() {
                     </p>
                     <span
                       className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
-                        c.atendido ? "bg-mint/20 text-mint" : "bg-pop px-3 py-1 text-cream"
+                        c.atendido ? "bg-mint/20 text-mint" : "bg-coral px-3 py-1 text-cream"
                       }`}
                     >
                       {c.atendido ? "Atendido" : "Não atendido"}
@@ -253,19 +253,19 @@ export function ClientsSection() {
                     onClick={() => toggleAtendido(c.id)}
                     aria-pressed={c.atendido}
                     className={`relative h-7 w-14 rounded-full border-2 transition ${
-                      c.atendido ? "border-mint bg-mint/30" : "border-pop bg-pop/20"
+                      c.atendido ? "border-mint bg-mint/30" : "border-coral bg-coral/20"
                     }`}
                   >
                     <span
                       className={`absolute top-0.5 size-5 rounded-full transition-all ${
-                        c.atendido ? "left-7 bg-mint" : "left-0.5 bg-pop"
+                        c.atendido ? "left-7 bg-mint" : "left-0.5 bg-coral"
                       }`}
                     />
                   </button>
                   <button
                     type="button"
                     onClick={() => void removerComConfirmacao(c)}
-                    className="rounded-xl border-2 border-ink/10 px-3 py-1.5 text-xs font-bold text-ink/50 transition hover:border-pop hover:text-pop"
+                    className="rounded-xl border-2 border-ink/10 px-3 py-1.5 text-xs font-bold text-ink/50 transition hover:border-destructive hover:text-destructive"
                   >
                     Remover
                   </button>

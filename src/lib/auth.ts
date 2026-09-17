@@ -6,6 +6,16 @@ import { supabase } from "@/integrations/supabase/client";
  * Estado de login da equipe (Supabase Auth).
  * Usado para liberar/travar o histórico de contratos e a aba de clientes.
  * A geração de contratos em si NÃO depende de login.
+ *
+ * IMPORTANTE (segurança): não existe mais autocadastro público. Isso é
+ * proposital — a leitura/edição de `registros` no banco é restrita à
+ * tabela `equipe_autorizada` (ver migração
+ * 20260916120000_restringe_acesso_lista_autorizados.sql), então uma
+ * conta criada por sign-up não conseguiria enxergar nada mesmo assim.
+ * Para dar acesso a alguém novo da equipe:
+ *   1. Painel do Supabase → Authentication → Users → Add user
+ *   2. SQL Editor → INSERT INTO public.equipe_autorizada (email)
+ *      VALUES ('email.da.pessoa@grupovillela.com');
  */
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -36,22 +46,11 @@ export function useAuth() {
     if (error) throw new Error(traduzErro(error.message));
   }
 
-  /** Cria o acesso da equipe e já entra (confirmação de e-mail dispensada). */
-  async function criarAcesso(email: string, senha: string) {
-    const { error } = await supabase.auth.signUp({ email, password: senha });
-    if (error) throw new Error(traduzErro(error.message));
-    const { error: erroEntrada } = await supabase.auth.signInWithPassword({
-      email,
-      password: senha,
-    });
-    if (erroEntrada) throw new Error(traduzErro(erroEntrada.message));
-  }
-
   async function sair() {
     await supabase.auth.signOut();
   }
 
-  return { user, loading, entrar, criarAcesso, sair };
+  return { user, loading, entrar, sair };
 }
 
 function traduzErro(msg: string) {

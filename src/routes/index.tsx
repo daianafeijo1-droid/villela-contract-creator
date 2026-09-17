@@ -28,7 +28,9 @@ import {
 } from "@/lib/fill-contract";
 import { useHistory, type HistoryItem } from "@/lib/history";
 import { consultarCnpj } from "@/lib/cnpj";
+import { isValidCpf } from "@/lib/validators";
 import { useAuth } from "@/lib/auth";
+import { toast } from "sonner";
 import { ClientsSection } from "@/components/clients-section";
 import type { Client } from "@/lib/clients";
 import { PdfThumbnail } from "@/components/pdf-thumbnail";
@@ -120,11 +122,36 @@ const CNPJ_AUTO_FIELDS = [
   "email",
 ] as const;
 
+const RASCUNHO_KEY = "villela-contrato-rascunho";
+
+type Rascunho = {
+  modelId: string;
+  values: FormValues;
+  savedAt: string;
+};
+
+function lerRascunho(): Rascunho | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(RASCUNHO_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as Rascunho;
+  } catch {
+    return null;
+  }
+}
+
 function Index() {
   const [aba, setAba] = useState<Aba>("contratos");
   const [modelId, setModelId] = useState(MODELS[0]!.id);
   const [values, setValues] = useState<FormValues>({});
   const [errors, setErrors] = useState<Record<string, boolean>>({});
+  // Rascunho pendente de restaurar, detectado uma única vez ao carregar a
+  // página (rascunho salvo automaticamente enquanto o formulário é
+  // preenchido, para não perder tudo se a aba fechar sem querer).
+  const [rascunhoPendente, setRascunhoPendente] = useState<Rascunho | null>(
+    () => lerRascunho(),
+  );
   const [status, setStatus] = useState<{
     kind: "idle" | "erro" | "ok";
     msg: string;
@@ -142,7 +169,6 @@ function Index() {
     user,
     loading: authLoading,
     entrar,
-    criarAcesso,
     sair,
   } = useAuth();
 
@@ -170,8 +196,72 @@ function Index() {
     [history],
   );
 
-  const listaHistoricoAtual =
+  const listaHistoricoBase =
     historicoAba === "equipe" ? meusContratos : contratosDeTerceiros;
+
+  // Busca por contratante/modelo e filtro por período, aplicados sobre a
+  // aba do histórico selecionada (Meus Contratos / Gerados por Terceiros).
+  const [buscaHistorico, setBuscaHistorico] = useState("");
+  const [filtroModeloHistorico, setFiltroModeloHistorico] = useState("todos");
+  const [filtroPeriodoHistorico, setFiltroPeriodoHistorico] = useState<
+    "todos" | "7" | "30" | "90"
+  >("todos");
+
+  const listaHistoricoAtual = useMemo(() => {
+    const q = buscaHistorico.trim().toLowerCase();
+    const limiteMs =
+      filtroPeriodoHistorico === "todos"
+        ? null
+        : Date.now() - Number(filtroPeriodoHistorico) * 24 * 60 * 60 * 1000;
+
+    return listaHistoricoBase.filter((item) => {
+      if (
+        filtroModeloHistorico !== "todos" &&
+        item.modelId !== filtroModeloHistorico
+      ) {
+        return false;
+      }
+      if (
+        limiteMs !== null &&
+        new Date(item.createdAt).getTime() < limiteMs
+      ) {
+        return false;
+      }
+      if (q && !item.contratante.toLowerCase().includes(q)) {
+        return false;
+      }
+      return true;
+    });
+  }, [
+    listaHistoricoBase,
+    buscaHistorico,
+    filtroModeloHistorico,
+    filtroPeriodoHistorico,
+  ]);
+
+  function exportarHistoricoCsv() {
+    const linhas = [
+      ["Contratante", "Modelo", "Data de geração"].join(";"),
+      ...listaHistoricoAtual.map((item) => {
+        const m = getModel(item.modelId);
+        const dataFormatada = new Date(item.createdAt).toLocaleDateString(
+          "pt-BR",
+        );
+        const contratante = (item.contratante || "").replace(/;/g, ",");
+        return [contratante, `${m.name} - ${m.subtitle}`, dataFormatada].join(
+          ";",
+        );
+      }),
+    ];
+    const csv = "\uFEFF" + linhas.join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `historico-contratos-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   async function removerDoHistoricoComConfirmacao(item: HistoryItem) {
     const ok = window.confirm(
@@ -220,6 +310,23 @@ function Index() {
     });
   }
 
+  // Retoma um contrato já gerado como ponto de partida para um novo (ex.:
+  // mesmo cliente, contrato renovado) — evita redigitar tudo de novo.
+  function duplicarContrato(item: HistoryItem) {
+    setModelId(item.modelId);
+    setValues({ ...item.values });
+    setErrors({});
+    setAba("contratos");
+    setStatus({
+      kind: "ok",
+      msg: `Dados de "${item.contratante || "contrato anterior"}" carregados. Confira os campos (principalmente datas e valores) antes de gerar.`,
+    });
+
+    requestAnimationFrame(() => {
+      document.getElementById("passo-1")?.scrollIntoView({ behavior: "smooth" });
+    });
+  }
+
   const [cnpjStatus, setCnpjStatus] = useState<{
     kind: "idle" | "loading" | "ok" | "erro";
     msg: string;
@@ -227,6 +334,12 @@ function Index() {
     kind: "idle",
     msg: "",
   });
+
+  // Situação cadastral da última consulta de CNPJ (Ativa, Baixada, Suspensa,
+  // Inapta...). Usada para avisar antes de gerar contrato com empresa não
+  // ativa. Não é limpa por `limparDadosCnpj` para o aviso continuar visível
+  // enquanto os dados carregados ainda são dessa consulta.
+  const [situacaoCadastral, setSituacaoCadastral] = useState("");
 
   const model = useMemo(() => getModel(modelId), [modelId]);
 
@@ -332,6 +445,49 @@ function Index() {
     values["qtdParcelas"],
   ]);
 
+  function limparRascunho() {
+    setRascunhoPendente(null);
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.removeItem(RASCUNHO_KEY);
+    } catch {
+      // localStorage indisponível (modo privado etc.) — sem problema,
+      // o rascunho simplesmente não é salvo.
+    }
+  }
+
+  function restaurarRascunho() {
+    if (!rascunhoPendente) return;
+    setModelId(rascunhoPendente.modelId);
+    setValues(rascunhoPendente.values);
+    setRascunhoPendente(null);
+    setErrors({});
+  }
+
+  // Salva o formulário em andamento no navegador (não na nuvem) para não
+  // perder tudo se a aba fechar ou a página recarregar sem querer. Só
+  // grava quando já há algo preenchido, e é sempre limpo depois que o
+  // contrato é gerado com sucesso (ver `limparRascunho` em `gerar`).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (rascunhoPendente) return; // não sobrescreve enquanto oferece restaurar
+    const temConteudo = Object.values(values).some((v) => (v ?? "").trim());
+    try {
+      if (!temConteudo) {
+        window.localStorage.removeItem(RASCUNHO_KEY);
+        return;
+      }
+      const rascunho: Rascunho = {
+        modelId,
+        values,
+        savedAt: new Date().toISOString(),
+      };
+      window.localStorage.setItem(RASCUNHO_KEY, JSON.stringify(rascunho));
+    } catch {
+      // sem espaço/localStorage bloqueado — segue sem salvar rascunho.
+    }
+  }, [values, modelId, rascunhoPendente]);
+
   const setField = (
     field: FieldDef,
     raw: string,
@@ -374,6 +530,7 @@ function Index() {
       kind: "idle",
       msg: "",
     });
+    setSituacaoCadastral("");
   }
 
   async function buscarCnpj(cnpj: string) {
@@ -421,10 +578,17 @@ function Index() {
       });
 
       setErrors({});
+      setSituacaoCadastral(d.situacaoCadastral);
+
+      const situacaoOk =
+        !d.situacaoCadastral ||
+        d.situacaoCadastral.toLowerCase() === "ativa";
 
       setCnpjStatus({
-        kind: "ok",
-        msg: `Dados preenchidos: ${d.razaoSocial}`,
+        kind: situacaoOk ? "ok" : "erro",
+        msg: situacaoOk
+          ? `Dados preenchidos: ${d.razaoSocial}`
+          : `Dados preenchidos: ${d.razaoSocial} — atenção: situação cadastral "${d.situacaoCadastral}", não Ativa.`,
       });
     } catch {
       setCnpjStatus({
@@ -446,17 +610,47 @@ function Index() {
       }
     }
 
+    // CPF do responsável: sempre CPF, valida dígito verificador.
+    if (
+      values["cpfResponsavel"] &&
+      !isValidCpf(values["cpfResponsavel"])
+    ) {
+      faltando["cpfResponsavel"] = true;
+    }
+
+    // cpfCnpj pode ser CPF (pessoa física) ou CNPJ (empresa). Só valida
+    // dígito verificador quando tem 11 dígitos (formato de CPF).
+    const cpfCnpjDigits = (values["cpfCnpj"] ?? "").replace(/\D/g, "");
+    if (
+      cpfCnpjDigits.length === 11 &&
+      !isValidCpf(values["cpfCnpj"] ?? "")
+    ) {
+      faltando["cpfCnpj"] = true;
+    }
+
     if (Object.keys(faltando).length) {
       setErrors(faltando);
 
-      setStatus({
-        kind: "erro",
-        msg: `Preencha os ${
-          Object.keys(faltando).length
-        } campo(s) destacado(s) antes de gerar.`,
-      });
+      const msg = faltando["cpfResponsavel"] || faltando["cpfCnpj"]
+        ? "Confira o(s) CPF(s) destacado(s): o número digitado não é válido."
+        : `Preencha os ${
+            Object.keys(faltando).length
+          } campo(s) destacado(s) antes de gerar.`;
+
+      setStatus({ kind: "erro", msg });
+      toast.error(msg);
 
       return;
+    }
+
+    if (
+      situacaoCadastral &&
+      situacaoCadastral.toLowerCase() !== "ativa"
+    ) {
+      const seguir = window.confirm(
+        `A situação cadastral consultada para este CNPJ é "${situacaoCadastral}" (não Ativa). Deseja gerar o contrato mesmo assim?`,
+      );
+      if (!seguir) return;
     }
 
     setGerando(true);
@@ -476,6 +670,8 @@ function Index() {
         fileNameFor(model, values),
       );
 
+      limparRascunho();
+
       // O download já aconteceu: um problema para salvar
       // o histórico não deve ser reportado como falha
       // na geração do contrato.
@@ -492,20 +688,23 @@ function Index() {
           kind: "ok",
           msg: "Contrato gerado, baixado e salvo no histórico.",
         });
+        toast.success("Contrato gerado e baixado com sucesso.");
       } catch {
         setStatus({
           kind: "ok",
           msg: "Contrato gerado e baixado. Não foi possível salvar no histórico agora.",
         });
+        toast.warning(
+          "Contrato baixado, mas não foi possível salvar no histórico agora.",
+        );
       }
     } catch (err) {
-      setStatus({
-        kind: "erro",
-        msg:
-          err instanceof Error
-            ? err.message
-            : "Não foi possível gerar o contrato.",
-      });
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Não foi possível gerar o contrato.";
+      setStatus({ kind: "erro", msg });
+      toast.error(msg);
     } finally {
       setGerando(false);
     }
@@ -526,11 +725,11 @@ function Index() {
         bytes,
         fileNameFor(m, item.values),
       );
+      toast.success("Contrato baixado novamente.");
     } catch {
-      setStatus({
-        kind: "erro",
-        msg: "Não foi possível baixar esse contrato novamente.",
-      });
+      const msg = "Não foi possível baixar esse contrato novamente.";
+      setStatus({ kind: "erro", msg });
+      toast.error(msg);
     }
   }
 
@@ -615,7 +814,6 @@ function Index() {
             user={user}
             authLoading={authLoading}
             entrar={entrar}
-            criarAcesso={criarAcesso}
             title="Clientes em Atendimento"
             description="Faça login com sua conta da equipe para ver e gerenciar os clientes."
           >
@@ -625,6 +823,32 @@ function Index() {
 
         {aba === "contratos" && (
           <>
+            {rascunhoPendente && (
+              <div className="block-card mb-6 flex flex-wrap items-center justify-between gap-3 border-2 border-violet/30 p-4">
+                <p className="text-sm font-bold text-ink">
+                  Encontramos um rascunho não finalizado de{" "}
+                  {new Date(rascunhoPendente.savedAt).toLocaleString("pt-BR")}
+                  . Deseja continuar de onde parou?
+                </p>
+                <div className="flex shrink-0 gap-2">
+                  <button
+                    type="button"
+                    onClick={restaurarRascunho}
+                    className="rounded-xl bg-ink px-4 py-2 text-xs font-bold text-cream transition hover:bg-violet"
+                  >
+                    Restaurar rascunho
+                  </button>
+                  <button
+                    type="button"
+                    onClick={limparRascunho}
+                    className="rounded-xl border-2 border-ink/10 px-4 py-2 text-xs font-bold text-ink/50 transition hover:border-destructive hover:text-destructive"
+                  >
+                    Descartar
+                  </button>
+                </div>
+              </div>
+            )}
+
             <section id="passo-1" className="block-card p-6 md:p-8">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-xs font-extrabold tracking-[0.2em] text-pop uppercase">
@@ -921,6 +1145,14 @@ function Index() {
                               : cnpjStatus.msg}
                           </p>
                         )}
+
+                        {f.key === "cpfResponsavel" &&
+                          values[f.key] &&
+                          !isValidCpf(values[f.key] ?? "") && (
+                            <p className="mt-1 text-[11px] font-bold text-destructive">
+                              CPF inválido — confira os números.
+                            </p>
+                          )}
                       </label>
                     ),
                   )}
@@ -1073,7 +1305,6 @@ function Index() {
               user={user}
               authLoading={authLoading}
               entrar={entrar}
-            criarAcesso={criarAcesso}
               title="Histórico de Contratos"
               description="Faça login para ver e baixar novamente os contratos já gerados."
             >
@@ -1135,6 +1366,50 @@ function Index() {
                   </p>
                 )}
 
+                <div className="mb-5 grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
+                  <input
+                    type="text"
+                    placeholder="Buscar por contratante..."
+                    value={buscaHistorico}
+                    onChange={(e) => setBuscaHistorico(e.target.value)}
+                    className="field-input"
+                  />
+                  <select
+                    value={filtroModeloHistorico}
+                    onChange={(e) => setFiltroModeloHistorico(e.target.value)}
+                    className="field-input"
+                  >
+                    <option value="todos">Todos os modelos</option>
+                    {MODELS.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} · {m.subtitle}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={filtroPeriodoHistorico}
+                    onChange={(e) =>
+                      setFiltroPeriodoHistorico(
+                        e.target.value as typeof filtroPeriodoHistorico,
+                      )
+                    }
+                    className="field-input"
+                  >
+                    <option value="todos">Qualquer período</option>
+                    <option value="7">Últimos 7 dias</option>
+                    <option value="30">Últimos 30 dias</option>
+                    <option value="90">Últimos 90 dias</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={exportarHistoricoCsv}
+                    disabled={listaHistoricoAtual.length === 0}
+                    className="rounded-xl border-2 border-ink/10 px-4 py-2.5 text-xs font-bold text-ink/60 transition hover:border-ink/30 hover:text-ink disabled:opacity-40"
+                  >
+                    Exportar CSV
+                  </button>
+                </div>
+
                 {historicoCarregando ? (
                   <div className="space-y-3 py-2">
                     <div className="h-14 animate-pulse rounded-xl bg-ink/5" />
@@ -1142,9 +1417,11 @@ function Index() {
                   </div>
                 ) : listaHistoricoAtual.length === 0 ? (
                   <p className="py-4 text-sm font-semibold text-ink/50">
-                    {historicoAba === "equipe"
-                      ? "Nenhum contrato gerado pela equipe ainda."
-                      : "Nenhum contrato gerado por terceiros ainda."}
+                    {listaHistoricoBase.length > 0
+                      ? "Nenhum contrato encontrado com esses filtros."
+                      : historicoAba === "equipe"
+                        ? "Nenhum contrato gerado pela equipe ainda."
+                        : "Nenhum contrato gerado por terceiros ainda."}
                   </p>
                 ) : (
                   <div className="divide-y divide-ink/10">
@@ -1198,6 +1475,17 @@ function Index() {
                               className="rounded-xl bg-ink px-4 py-2.5 text-sm font-bold text-cream transition hover:bg-violet"
                             >
                               Baixar de novo
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                duplicarContrato(item)
+                              }
+                              title="Usar estes dados como ponto de partida para um novo contrato"
+                              className="rounded-xl border-2 border-ink/10 px-4 py-2.5 text-sm font-bold text-ink/60 transition hover:border-violet hover:text-violet"
+                            >
+                              Duplicar
                             </button>
 
                             <button

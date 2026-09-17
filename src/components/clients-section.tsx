@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { consultarCnpj } from "@/lib/cnpj";
 import { useClients, type Client } from "@/lib/clients";
 import { maskCep, maskCnpj, maskCpf, maskPhone, maskUf } from "@/lib/format";
+import { isValidCpf } from "@/lib/validators";
+import { toast } from "sonner";
 
 type Filtro = "todos" | "atendidos" | "naoAtendidos";
 
@@ -116,6 +118,7 @@ export function ClientsSection({
         atendido: false,
         addedAt: now,
         statusChangedAt: now,
+        ultimaConsultaCnpj: now,
       };
       await salvarCliente(item);
       setCnpjInput("");
@@ -128,6 +131,32 @@ export function ClientsSection({
       );
     } finally {
       setBuscando(false);
+    }
+  }
+
+  const [reconsultandoId, setReconsultandoId] = useState<string | null>(null);
+
+  /** Atualiza situação cadastral e dados públicos sem apagar o que a equipe já completou manualmente. */
+  async function reconsultarCnpj(c: Client) {
+    setReconsultandoId(c.id);
+    try {
+      const d = await consultarCnpj(c.cnpj);
+      if (!d) {
+        toast.error("CNPJ não encontrado na consulta pública.");
+        return;
+      }
+      await salvarCliente({
+        ...c,
+        situacaoCadastral: d.situacaoCadastral,
+        ultimaConsultaCnpj: new Date().toISOString(),
+      });
+      toast.success(`Situação cadastral atualizada: ${d.situacaoCadastral || "não informada"}.`);
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Não foi possível reconsultar o CNPJ agora.",
+      );
+    } finally {
+      setReconsultandoId(null);
     }
   }
 
@@ -166,6 +195,12 @@ export function ClientsSection({
   async function salvarEdicao() {
     const alvo = clients.find((c) => c.id === editandoId);
     if (!alvo || !editForm) return;
+
+    if (editForm.cpfResponsavel && !isValidCpf(editForm.cpfResponsavel)) {
+      toast.error("CPF do responsável inválido — confira os números digitados.");
+      return;
+    }
+
     setSalvandoEdicao(true);
     try {
       await salvarCliente({ ...alvo, ...editForm });
@@ -309,7 +344,14 @@ export function ClientsSection({
                         {c.atendido ? "Atendido" : "Não atendido"}
                       </span>
                       {c.situacaoCadastral && (
-                        <span className="rounded-full border border-ink/15 px-2 py-0.5 text-[10px] font-bold text-ink/50">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                            c.situacaoCadastral.toLowerCase() === "ativa"
+                              ? "bg-mint/20 text-mint"
+                              : "bg-destructive/15 text-destructive"
+                          }`}
+                        >
+                          {c.situacaoCadastral.toLowerCase() === "ativa" ? "" : "⚠️ "}
                           Situação: {c.situacaoCadastral}
                         </span>
                       )}
@@ -318,6 +360,11 @@ export function ClientsSection({
                       {maskCnpj(c.cnpj)}
                       {c.nomeFantasia && c.razaoSocial ? ` · ${c.razaoSocial}` : ""}
                     </p>
+                    {c.ultimaConsultaCnpj && (
+                      <p className="text-[11px] font-semibold text-ink/35">
+                        Situação consultada em {formatDateTime(c.ultimaConsultaCnpj)}
+                      </p>
+                    )}
                     {c.responsavel && (
                       <p className="text-sm font-semibold text-ink/50">
                         Responsável: {c.responsavel}
@@ -364,6 +411,15 @@ export function ClientsSection({
                         Gerar Contrato
                       </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => void reconsultarCnpj(c)}
+                      disabled={reconsultandoId === c.id}
+                      title="Consultar de novo a situação cadastral deste CNPJ"
+                      className="rounded-xl border-2 border-ink/10 px-3 py-1.5 text-xs font-bold text-ink/50 transition hover:border-ink/30 hover:text-ink disabled:opacity-50"
+                    >
+                      {reconsultandoId === c.id ? "Consultando..." : "Reconsultar CNPJ"}
+                    </button>
                     <button
                       type="button"
                       onClick={() =>
@@ -424,8 +480,17 @@ export function ClientsSection({
                           type="text"
                           value={editForm.cpfResponsavel}
                           onChange={(e) => atualizarCampo("cpfResponsavel", maskCpf(e.target.value))}
-                          className="field-input mt-1"
+                          className={`field-input mt-1 ${
+                            editForm.cpfResponsavel && !isValidCpf(editForm.cpfResponsavel)
+                              ? "border-destructive!"
+                              : ""
+                          }`}
                         />
+                        {editForm.cpfResponsavel && !isValidCpf(editForm.cpfResponsavel) && (
+                          <span className="mt-1 block text-[11px] font-bold text-destructive">
+                            CPF inválido
+                          </span>
+                        )}
                       </label>
                       <label className="text-xs font-bold text-ink/60 sm:col-span-2">
                         Endereço (rua e número)

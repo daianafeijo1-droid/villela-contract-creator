@@ -24,6 +24,8 @@ export type Client = {
   atendido: boolean;
   addedAt: string;
   statusChangedAt: string;
+  /** Quando a situação cadastral foi consultada pela última vez (BrasilAPI). */
+  ultimaConsultaCnpj: string;
 };
 
 type Dados = Omit<Client, "id" | "addedAt">;
@@ -52,6 +54,7 @@ export function useClients() {
         observacoes: r.dados?.observacoes ?? "",
         atendido: Boolean(r.dados?.atendido),
         statusChangedAt: r.dados?.statusChangedAt ?? r.updated_at,
+        ultimaConsultaCnpj: r.dados?.ultimaConsultaCnpj ?? r.created_at,
       })),
     [rows],
   );

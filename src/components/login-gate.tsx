@@ -5,7 +5,6 @@ type Props = {
   user: User | null;
   authLoading: boolean;
   entrar: (email: string, senha: string) => Promise<void>;
-  criarAcesso: (email: string, senha: string) => Promise<void>;
   title: string;
   description: string;
   children: ReactNode;
@@ -15,12 +14,15 @@ type Props = {
  * Mostra `children` apenas para quem está logado. Sem login, mostra um
  * formulário de acesso no lugar do conteúdo (usado no Histórico e em
  * Clientes em Atendimento — a geração de contratos continua liberada).
+ *
+ * Não existe autocadastro aqui de propósito: contas novas da equipe são
+ * criadas pelo painel do Supabase e liberadas na tabela
+ * `equipe_autorizada` (ver src/lib/auth.ts para o passo a passo).
  */
 export function LoginGate({
   user,
   authLoading,
   entrar,
-  criarAcesso,
   title,
   description,
   children,
@@ -29,7 +31,6 @@ export function LoginGate({
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState("");
   const [entrando, setEntrando] = useState(false);
-  const [modo, setModo] = useState<"entrar" | "criar">("entrar");
 
   if (authLoading) {
     return <div className="block-card mt-6 h-40 animate-pulse p-6 md:p-8" />;
@@ -43,14 +44,9 @@ export function LoginGate({
       setErro("Preencha e-mail e senha.");
       return;
     }
-    if (modo === "criar" && senha.length < 6) {
-      setErro("A senha precisa ter pelo menos 6 caracteres.");
-      return;
-    }
     setEntrando(true);
     try {
-      if (modo === "criar") await criarAcesso(email.trim(), senha);
-      else await entrar(email.trim(), senha);
+      await entrar(email.trim(), senha);
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Não foi possível entrar.");
     } finally {
@@ -79,7 +75,7 @@ export function LoginGate({
           <span className="text-sm font-bold text-ink">Senha</span>
           <input
             type="password"
-            autoComplete={modo === "criar" ? "new-password" : "current-password"}
+            autoComplete="current-password"
             value={senha}
             onChange={(e) => setSenha(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleEnviar()}
@@ -92,27 +88,13 @@ export function LoginGate({
           disabled={entrando}
           className="btn-brand px-6 py-3 text-sm"
         >
-          {entrando
-            ? modo === "criar"
-              ? "Criando acesso..."
-              : "Entrando..."
-            : modo === "criar"
-              ? "Criar acesso e entrar"
-              : "Entrar"}
+          {entrando ? "Entrando..." : "Entrar"}
         </button>
         {erro && <p className="text-[11px] font-bold text-destructive">{erro}</p>}
-        <button
-          type="button"
-          onClick={() => {
-            setModo((m) => (m === "entrar" ? "criar" : "entrar"));
-            setErro("");
-          }}
-          className="text-left text-[11px] font-bold text-ink/50 underline transition hover:text-ink"
-        >
-          {modo === "entrar"
-            ? "Primeiro acesso? Criar minha conta da equipe"
-            : "Já tenho acesso — voltar para entrar"}
-        </button>
+        <p className="text-[11px] font-semibold text-ink/40">
+          Acesso liberado só para quem já tem conta da equipe. Precisa de um acesso novo? Peça para alguém
+          da equipe criar pelo painel do Supabase.
+        </p>
       </div>
     </section>
   );

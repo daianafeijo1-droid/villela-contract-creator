@@ -23,11 +23,20 @@ export function useAuth() {
 
   useEffect(() => {
     let ativo = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (!ativo) return;
-      setUser(data.session?.user ?? null);
-      setLoading(false);
-    });
+    void supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (!ativo) return;
+        if (error) console.error("[Auth] Não foi possível restaurar a sessão:", error);
+        setUser(data.session?.user ?? null);
+      })
+      .catch((error: unknown) => {
+        console.error("[Auth] Falha ao restaurar a sessão:", error);
+        if (ativo) setUser(null);
+      })
+      .finally(() => {
+        if (ativo) setLoading(false);
+      });
 
     const { data: assinatura } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!ativo) return;
@@ -42,8 +51,13 @@ export function useAuth() {
   }, []);
 
   async function entrar(email: string, senha: string) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password: senha,
+    });
     if (error) throw new Error(traduzErro(error.message));
+    if (!data.session?.user) throw new Error("O acesso não foi concluído. Tente novamente.");
+    setUser(data.session.user);
   }
 
   async function sair() {
@@ -55,6 +69,8 @@ export function useAuth() {
 
 function traduzErro(msg: string) {
   if (/invalid login credentials/i.test(msg)) return "E-mail ou senha incorretos.";
+  if (/rate limit|too many requests/i.test(msg)) return "Muitas tentativas seguidas. Aguarde um minuto e tente novamente.";
+  if (/failed to fetch|network|timeout/i.test(msg)) return "Não foi possível conectar. Verifique sua internet e tente novamente.";
   if (/email not confirmed/i.test(msg)) return "E-mail ainda não confirmado.";
   if (/already registered|already exists/i.test(msg))
     return "Já existe um acesso com esse e-mail. Use a opção Entrar.";

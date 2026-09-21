@@ -31,7 +31,8 @@ export type Client = {
 type Dados = Omit<Client, "id" | "addedAt">;
 
 export function useClients() {
-  const { rows, carregando, salvar, remover } = useCloudRecords<Dados>("cliente");
+  const { rows, carregando, erro, sincronizando, salvar, remover } =
+    useCloudRecords<Dados>("cliente");
 
   const clients = useMemo<Client[]>(
     () =>
@@ -64,5 +65,5 @@ export function useClients() {
     await salvar(c.cnpj, dados);
   }
 
-  return { clients, carregando, salvarCliente, remover };
+  return { clients, carregando, erro, sincronizando, salvarCliente, remover };
 }

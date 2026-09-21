@@ -19,7 +19,7 @@ type Dados = Omit<HistoryItem, "id" | "createdAt">;
 export function useHistory(habilitado = true) {
   // A leitura do histórico exige login; o registro do contrato gerado
   // funciona também para quem não está logado (sempre chave nova).
-  const { rows, carregando, salvar, remover } = useCloudRecords<Dados>(
+  const { rows, carregando, erro, sincronizando, salvar, remover } = useCloudRecords<Dados>(
     "contrato",
     habilitado,
     "insert",
@@ -58,6 +58,8 @@ export function useHistory(habilitado = true) {
   return {
     history,
     carregando,
+    erro,
+    sincronizando,
     registrar,
     remover,
   };

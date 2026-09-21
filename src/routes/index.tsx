@@ -175,6 +175,8 @@ function Index() {
   const {
     history,
     carregando: historicoCarregando,
+    erro: historicoErro,
+    sincronizando: historicoSincronizando,
     registrar,
     remover: removerDoHistorico,
   } = useHistory(!!user && !authLoading);
@@ -1327,6 +1329,17 @@ function Index() {
                     {history.length} contratos
                   </span>
                 </div>
+
+                {historicoErro && (
+                  <p className="mb-4 text-xs font-bold text-destructive" role="alert">
+                    {historicoErro}
+                  </p>
+                )}
+                {!historicoErro && historicoSincronizando && history.length > 0 && (
+                  <p className="mb-4 text-xs font-semibold text-ink/40">
+                    Atualizando dados compartilhados...
+                  </p>
+                )}
 
                 <div className="mb-5 flex flex-wrap gap-2">
                   {(

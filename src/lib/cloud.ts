@@ -32,6 +32,8 @@ export function useCloudRecords<T>(
 ) {
   const [rows, setRows] = useState<Registro<T>[]>([]);
   const [carregando, setCarregando] = useState(podeLer);
+  const [erro, setErro] = useState("");
+  const [sincronizando, setSincronizando] = useState(false);
   const ativo = useRef(true);
 
   const carregar = useCallback(async () => {
@@ -43,6 +45,7 @@ export function useCloudRecords<T>(
     }
 
     setCarregando(true);
+    setSincronizando(true);
 
     const { data, error } = await supabase
       .from("registros")
@@ -58,11 +61,14 @@ export function useCloudRecords<T>(
         error,
       );
       setRows([]);
+      setErro("Não foi possível carregar os dados compartilhados. Verifique sua conexão.");
     } else if (data) {
       setRows(data as unknown as Registro<T>[]);
+      setErro("");
     }
 
     setCarregando(false);
+    setSincronizando(false);
   }, [tipo, podeLer]);
 
   useEffect(() => {
@@ -89,14 +95,42 @@ export function useCloudRecords<T>(
           table: "registros",
           filter: `tipo=eq.${tipo}`,
         },
-        () => {
-          void carregar();
+        (payload) => {
+          const novo = payload.new as Registro<T> | undefined;
+          const antigo = payload.old as Partial<Registro<T>> | undefined;
+
+          setRows((atuais) => {
+            if (payload.eventType === "DELETE") {
+              return atuais.filter((row) => row.id !== antigo?.id && row.chave !== antigo?.chave);
+            }
+            if (!novo?.id || novo.tipo !== tipo) return atuais;
+            const semAnterior = atuais.filter((row) => row.id !== novo.id && row.chave !== novo.chave);
+            return [novo, ...semAnterior].sort(
+              (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at),
+            );
+          });
+          setErro("");
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          setErro("");
+          void carregar();
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          setErro("A atualização automática foi interrompida. Tentando reconectar...");
+        }
+      });
+
+    const atualizarAoRetomar = () => {
+      if (document.visibilityState === "visible" && navigator.onLine) void carregar();
+    };
+    window.addEventListener("online", atualizarAoRetomar);
+    document.addEventListener("visibilitychange", atualizarAoRetomar);
 
     return () => {
       ativo.current = false;
+      window.removeEventListener("online", atualizarAoRetomar);
+      document.removeEventListener("visibilitychange", atualizarAoRetomar);
       void supabase.removeChannel(channel);
     };
   }, [tipo, podeLer, carregar]);
@@ -125,6 +159,7 @@ export function useCloudRecords<T>(
         throw new Error(error.message);
       }
 
+      setErro("");
       if (podeLer) await carregar();
     },
     [tipo, modoSalvar, podeLer, carregar],
@@ -146,6 +181,7 @@ export function useCloudRecords<T>(
         throw new Error(error.message);
       }
 
+      setErro("");
       if (podeLer) await carregar();
     },
     [tipo, podeLer, carregar],
@@ -154,6 +190,8 @@ export function useCloudRecords<T>(
   return {
     rows,
     carregando,
+    erro,
+    sincronizando,
     salvar,
     remover,
   };

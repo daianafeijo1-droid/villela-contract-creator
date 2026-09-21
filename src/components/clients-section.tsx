@@ -68,7 +68,7 @@ export function ClientsSection({
   /** Leva os dados do cliente para o formulário de contrato, na aba Contratos. */
   onGerarContrato?: (cliente: Client) => void;
 }) {
-  const { clients, carregando, salvarCliente, remover } = useClients();
+  const { clients, carregando, erro: erroNuvem, sincronizando, salvarCliente, remover } = useClients();
   const [adding, setAdding] = useState(false);
   const [cnpjInput, setCnpjInput] = useState("");
   const [buscando, setBuscando] = useState(false);
@@ -307,6 +307,15 @@ export function ClientsSection({
           ))}
         </div>
       </div>
+
+      {erroNuvem && (
+        <p className="mt-3 text-xs font-bold text-destructive" role="alert">
+          {erroNuvem}
+        </p>
+      )}
+      {!erroNuvem && sincronizando && clients.length > 0 && (
+        <p className="mt-3 text-xs font-semibold text-ink/40">Atualizando dados compartilhados...</p>
+      )}
 
       <div className="mt-6">
         {carregando ? (

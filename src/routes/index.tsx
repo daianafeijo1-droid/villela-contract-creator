@@ -601,11 +601,10 @@ function Index() {
   }
 
   async function gerar() {
-    const faltando: Record<string, boolean> = {};
-
     // Nenhum campo é obrigatório: o contrato é gerado com o que foi
     // preenchido, e o que ficar em branco simplesmente não é impresso.
-    void faltando;
+    const faltando: Record<string, boolean> = {};
+
 
 
     // CPF do responsável: sempre CPF, valida dígito verificador.

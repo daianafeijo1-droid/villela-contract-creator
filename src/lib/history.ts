@@ -12,7 +12,7 @@ export type HistoryItem = {
   createdAt: string;
   values: FormValues;
   origem: OrigemContrato;
-  autor?: string;
+  autor?: string | undefined;
 };
 
 type Dados = Omit<HistoryItem, "id" | "createdAt">;

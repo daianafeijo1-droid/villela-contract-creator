@@ -42,7 +42,7 @@ async function getJson(url: string): Promise<Obj | "naoEncontrado" | null> {
 const brasilApi: Fonte = async (digits) => {
   const d = await getJson(`https://brasilapi.com.br/api/cnpj/v1/${digits}`);
   if (!d || d === "naoEncontrado") return d;
-  const socios = Array.isArray(d.qsa) ? (d.qsa as Obj[]) : [];
+  const socios = Array.isArray(d["qsa"]) ? (d["qsa"] as Obj[]) : [];
   return {
     razaoSocial: str(d, "razao_social") || str(d, "nome_fantasia"),
     nomeFantasia: str(d, "nome_fantasia"),
@@ -61,16 +61,16 @@ const brasilApi: Fonte = async (digits) => {
 const cnpja: Fonte = async (digits) => {
   const d = await getJson(`https://open.cnpja.com/office/${digits}`);
   if (!d || d === "naoEncontrado") return d;
-  const company = (d.company ?? {}) as Obj;
-  const address = (d.address ?? {}) as Obj;
-  const members = Array.isArray(company.members) ? (company.members as Obj[]) : [];
-  const phones = Array.isArray(d.phones) ? (d.phones as Obj[]) : [];
-  const emails = Array.isArray(d.emails) ? (d.emails as Obj[]) : [];
+  const company = (d["company"] ?? {}) as Obj;
+  const address = (d["address"] ?? {}) as Obj;
+  const members = Array.isArray(company["members"]) ? (company["members"] as Obj[]) : [];
+  const phones = Array.isArray(d["phones"]) ? (d["phones"] as Obj[]) : [];
+  const emails = Array.isArray(d["emails"]) ? (d["emails"] as Obj[]) : [];
   const tel = phones[0] ? onlyDigits(str(phones[0], "area") + str(phones[0], "number")) : "";
   return {
     razaoSocial: str(company, "name") || str(d, "alias"),
     nomeFantasia: str(d, "alias"),
-    situacaoCadastral: str(d.status, "text").toUpperCase(),
+    situacaoCadastral: str(d["status"], "text").toUpperCase(),
     responsavel: str(members[0]?.person, "name").toUpperCase(),
     endereco: montarEndereco(str(address, "street"), str(address, "number"), str(address, "details")),
     bairro: str(address, "district"),
@@ -85,7 +85,7 @@ const cnpja: Fonte = async (digits) => {
 const minhaReceita: Fonte = async (digits) => {
   const d = await getJson(`https://minhareceita.org/${digits}`);
   if (!d || d === "naoEncontrado") return d;
-  const socios = Array.isArray(d.qsa) ? (d.qsa as Obj[]) : [];
+  const socios = Array.isArray(d["qsa"]) ? (d["qsa"] as Obj[]) : [];
   return {
     razaoSocial: str(d, "razao_social") || str(d, "nome_fantasia"),
     nomeFantasia: str(d, "nome_fantasia"),

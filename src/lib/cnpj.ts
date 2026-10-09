@@ -13,62 +13,111 @@ export type CnpjData = {
 };
 
 const onlyDigits = (v: string) => v.replace(/\D/g, "");
+type Obj = Record<string, unknown>;
+const str = (o: unknown, k: string) => {
+  const v = o && typeof o === "object" ? (o as Obj)[k] : undefined;
+  return typeof v === "string" ? v.trim() : "";
+};
+const montarEndereco = (rua: string, numero: string, comp: string) =>
+  [rua, numero].filter(Boolean).join(", ") + (comp ? ` - ${comp}` : "");
 
-/** Consulta pública de CNPJ (BrasilAPI). Retorna null quando não encontrado. */
+/** Resultado de uma fonte: dados, "naoEncontrado" (404) ou null (falha → próxima fonte). */
+type Fonte = (digits: string) => Promise<CnpjData | "naoEncontrado" | null>;
+
+async function getJson(url: string): Promise<Obj | "naoEncontrado" | null> {
+  const controller = new AbortController();
+  const limite = setTimeout(() => controller.abort(), 10000);
+  try {
+    const res = await fetch(url, { signal: controller.signal, headers: { Accept: "application/json" } });
+    if (res.status === 404) return "naoEncontrado";
+    if (!res.ok) return null;
+    return (await res.json()) as Obj;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(limite);
+  }
+}
+
+const brasilApi: Fonte = async (digits) => {
+  const d = await getJson(`https://brasilapi.com.br/api/cnpj/v1/${digits}`);
+  if (!d || d === "naoEncontrado") return d;
+  const socios = Array.isArray(d["qsa"]) ? (d["qsa"] as Obj[]) : [];
+  return {
+    razaoSocial: str(d, "razao_social") || str(d, "nome_fantasia"),
+    nomeFantasia: str(d, "nome_fantasia"),
+    situacaoCadastral: str(d, "descricao_situacao_cadastral"),
+    responsavel: str(socios[0], "nome_socio"),
+    endereco: montarEndereco(str(d, "logradouro"), str(d, "numero"), str(d, "complemento")),
+    bairro: str(d, "bairro"),
+    municipio: str(d, "municipio"),
+    uf: str(d, "uf"),
+    cep: onlyDigits(str(d, "cep")),
+    telefone: onlyDigits(str(d, "ddd_telefone_1")),
+    email: str(d, "email"),
+  };
+};
+
+const cnpja: Fonte = async (digits) => {
+  const d = await getJson(`https://open.cnpja.com/office/${digits}`);
+  if (!d || d === "naoEncontrado") return d;
+  const company = (d["company"] ?? {}) as Obj;
+  const address = (d["address"] ?? {}) as Obj;
+  const members = Array.isArray(company["members"]) ? (company["members"] as Obj[]) : [];
+  const phones = Array.isArray(d["phones"]) ? (d["phones"] as Obj[]) : [];
+  const emails = Array.isArray(d["emails"]) ? (d["emails"] as Obj[]) : [];
+  const tel = phones[0] ? onlyDigits(str(phones[0], "area") + str(phones[0], "number")) : "";
+  return {
+    razaoSocial: str(company, "name") || str(d, "alias"),
+    nomeFantasia: str(d, "alias"),
+    situacaoCadastral: str(d["status"], "text").toUpperCase(),
+    responsavel: str(members[0]?.["person"], "name").toUpperCase(),
+    endereco: montarEndereco(str(address, "street"), str(address, "number"), str(address, "details")),
+    bairro: str(address, "district"),
+    municipio: str(address, "city"),
+    uf: str(address, "state"),
+    cep: onlyDigits(str(address, "zip")),
+    telefone: tel,
+    email: str(emails[0], "address"),
+  };
+};
+
+const minhaReceita: Fonte = async (digits) => {
+  const d = await getJson(`https://minhareceita.org/${digits}`);
+  if (!d || d === "naoEncontrado") return d;
+  const socios = Array.isArray(d["qsa"]) ? (d["qsa"] as Obj[]) : [];
+  return {
+    razaoSocial: str(d, "razao_social") || str(d, "nome_fantasia"),
+    nomeFantasia: str(d, "nome_fantasia"),
+    situacaoCadastral: str(d, "descricao_situacao_cadastral"),
+    responsavel: str(socios[0], "nome_socio"),
+    endereco: montarEndereco(str(d, "logradouro"), str(d, "numero"), str(d, "complemento")),
+    bairro: str(d, "bairro"),
+    municipio: str(d, "municipio"),
+    uf: str(d, "uf"),
+    cep: onlyDigits(str(d, "cep")),
+    telefone: onlyDigits(str(d, "ddd_telefone_1")),
+    email: str(d, "email"),
+  };
+};
+
+/**
+ * Consulta pública de CNPJ com fontes de reserva: se uma estiver fora do ar,
+ * tenta a próxima. Retorna null quando o CNPJ não existe.
+ */
 export async function consultarCnpj(cnpj: string): Promise<CnpjData | null> {
   const digits = onlyDigits(cnpj);
   if (digits.length !== 14) return null;
 
-  // A consulta pública às vezes demora ou falha momentaneamente:
-  // usamos tempo limite e uma segunda tentativa antes de desistir.
-  async function buscar(): Promise<Response | null> {
-    const controller = new AbortController();
-    const limite = setTimeout(() => controller.abort(), 12000);
-    try {
-      return await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`, {
-        signal: controller.signal,
-        headers: { Accept: "application/json" },
-      });
-    } catch {
-      return null;
-    } finally {
-      clearTimeout(limite);
+  let naoEncontrado = 0;
+  for (const fonte of [brasilApi, cnpja, minhaReceita]) {
+    const r = await fonte(digits);
+    if (r === "naoEncontrado") {
+      naoEncontrado++;
+      continue;
     }
+    if (r && r.razaoSocial) return r;
   }
-
-  let res = await buscar();
-  // 404 = CNPJ inexistente (não faz sentido tentar de novo).
-  if (!res || (!res.ok && res.status !== 404)) {
-    await new Promise((r) => setTimeout(r, 800));
-    res = await buscar();
-  }
-  if (!res) throw new Error("Consulta de CNPJ indisponível no momento.");
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error("Consulta de CNPJ indisponível no momento.");
-  const d = (await res.json()) as Record<string, unknown>;
-  const s = (k: string) => (typeof d[k] === "string" ? (d[k] as string).trim() : "");
-
-  const numero = s("numero");
-  const complemento = s("complemento");
-  const endereco = [s("logradouro"), numero].filter(Boolean).join(", ") +
-    (complemento ? ` - ${complemento}` : "");
-
-  const socios = Array.isArray(d["qsa"]) ? (d["qsa"] as Record<string, unknown>[]) : [];
-  const primeiro = socios[0];
-  const responsavel =
-    primeiro && typeof primeiro["nome_socio"] === "string" ? primeiro["nome_socio"] : "";
-
-  return {
-    razaoSocial: s("razao_social") || s("nome_fantasia"),
-    nomeFantasia: s("nome_fantasia"),
-    situacaoCadastral: s("descricao_situacao_cadastral"),
-    responsavel,
-    endereco,
-    bairro: s("bairro"),
-    municipio: s("municipio"),
-    uf: s("uf"),
-    cep: onlyDigits(s("cep")),
-    telefone: onlyDigits(s("ddd_telefone_1")),
-    email: s("email"),
-  };
+  if (naoEncontrado > 0) return null;
+  throw new Error("Consulta de CNPJ indisponível no momento.");
 }

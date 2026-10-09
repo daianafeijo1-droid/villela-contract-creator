@@ -199,7 +199,7 @@ function Index() {
   );
 
   const listaHistoricoBase =
-    historicoAba === "equipe" ? meusContratos : contratosDeTerceiros;
+    historicoAba === "equipe" ? history : contratosDeTerceiros;
 
   // Busca por contratante/modelo e filtro por período, aplicados sobre a
   // aba do histórico selecionada (Meus Contratos / Gerados por Terceiros).
@@ -229,7 +229,8 @@ function Index() {
       ) {
         return false;
       }
-      if (q && !item.contratante.toLowerCase().includes(q)) {
+      const alvo = [item.contratante, item.values?.["cpfCnpj"] ?? "", (item.values?.["cpfCnpj"] ?? "").replace(/\D/g, ""), item.autor ?? ""].join(" ").toLowerCase();
+      if (q && !alvo.includes(q)) {
         return false;
       }
       return true;
@@ -679,6 +680,7 @@ function Index() {
             values["razaoSocial"] ?? "",
           values,
           origem: user ? "equipe" : "visitante",
+          ...(user?.email ? { autor: user.email } : {}),
         });
 
         setStatus({
@@ -1070,7 +1072,7 @@ function Index() {
                   </div>
 
                   <span className="rounded-full bg-mint/15 px-3 py-1.5 text-xs font-extrabold text-mint">
-                    Obrigatórios *
+                    Preenchimento flexível
                   </span>
                 </div>
 
@@ -1341,11 +1343,11 @@ function Index() {
                     [
                       [
                         "equipe",
-                        `Meus Contratos (${meusContratos.length})`,
+                        `Todos os Contratos (${history.length})`,
                       ],
                       [
                         "visitante",
-                        `Gerados por Terceiros (${contratosDeTerceiros.length})`,
+                        `Só de visitantes (${contratosDeTerceiros.length})`,
                       ],
                     ] as const
                   ).map(([value, label]) => (
@@ -1377,7 +1379,7 @@ function Index() {
                 <div className="mb-5 grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
                   <input
                     type="text"
-                    placeholder="Buscar por contratante..."
+                    placeholder="Buscar por contratante, CNPJ ou autor..."
                     value={buscaHistorico}
                     onChange={(e) => setBuscaHistorico(e.target.value)}
                     className="field-input"
@@ -1456,6 +1458,9 @@ function Index() {
                           <div className="min-w-0 flex-1">
                             <p className="truncate font-extrabold text-ink">
                               {item.contratante}
+                              <span className="ml-2 text-xs font-semibold text-ink/40">
+                                {item.autor ? `por ${item.autor}` : item.origem === "visitante" ? "visitante" : ""}
+                              </span>
                             </p>
 
                             <p className="text-sm font-semibold text-ink/50">

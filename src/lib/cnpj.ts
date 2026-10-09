@@ -71,7 +71,7 @@ const cnpja: Fonte = async (digits) => {
     razaoSocial: str(company, "name") || str(d, "alias"),
     nomeFantasia: str(d, "alias"),
     situacaoCadastral: str(d["status"], "text").toUpperCase(),
-    responsavel: str(members[0]?.person, "name").toUpperCase(),
+    responsavel: str(members[0]?.["person"], "name").toUpperCase(),
     endereco: montarEndereco(str(address, "street"), str(address, "number"), str(address, "details")),
     bairro: str(address, "district"),
     municipio: str(address, "city"),

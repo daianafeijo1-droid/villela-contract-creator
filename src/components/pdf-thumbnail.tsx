@@ -1,5 +1,24 @@
 import { useEffect, useState } from "react";
 
+// O leitor de PDF usa um recurso novo do JavaScript que muitos navegadores
+// ainda não têm; sem ele algumas miniaturas falhavam.
+type MapComPolyfill = Map<unknown, unknown> & {
+  getOrInsertComputed?: (k: unknown, cb: (k: unknown) => unknown) => unknown;
+};
+const mapProto = Map.prototype as MapComPolyfill;
+if (typeof mapProto.getOrInsertComputed !== "function") {
+  Object.defineProperty(Map.prototype, "getOrInsertComputed", {
+    configurable: true,
+    writable: true,
+    value: function (this: Map<unknown, unknown>, k: unknown, cb: (k: unknown) => unknown) {
+      if (this.has(k)) return this.get(k);
+      const v = cb(k);
+      this.set(k, v);
+      return v;
+    },
+  });
+}
+
 /** Cache em memória: evita re-renderizar o mesmo PDF toda vez que o componente remonta. */
 const cache = new Map<string, string>();
 

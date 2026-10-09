@@ -26,7 +26,7 @@ type Fonte = (digits: string) => Promise<CnpjData | "naoEncontrado" | null>;
 
 async function getJson(url: string): Promise<Obj | "naoEncontrado" | null> {
   const controller = new AbortController();
-  const limite = setTimeout(() => controller.abort(), 10000);
+  const limite = setTimeout(() => controller.abort(), 6000);
   try {
     const res = await fetch(url, { signal: controller.signal, headers: { Accept: "application/json" } });
     if (res.status === 404) return "naoEncontrado";
@@ -110,7 +110,8 @@ export async function consultarCnpj(cnpj: string): Promise<CnpjData | null> {
   if (digits.length !== 14) return null;
 
   let naoEncontrado = 0;
-  for (const fonte of [brasilApi, cnpja, minhaReceita]) {
+  // CNPJá primeiro: responde em milissegundos; BrasilAPI costuma travar quando instável.
+  for (const fonte of [cnpja, brasilApi, minhaReceita]) {
     const r = await fonte(digits);
     if (r === "naoEncontrado") {
       naoEncontrado++;

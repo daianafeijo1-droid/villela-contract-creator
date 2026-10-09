@@ -55,7 +55,7 @@ export function useHistory(habilitado = true) {
       contratante: item.contratante,
       values: { ...item.values },
       origem: item.origem,
-      autor: item.autor,
+      ...(item.autor ? { autor: item.autor } : {}),
     });
   }
 

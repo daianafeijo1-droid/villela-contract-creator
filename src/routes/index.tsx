@@ -680,7 +680,7 @@ function Index() {
             values["razaoSocial"] ?? "",
           values,
           origem: user ? "equipe" : "visitante",
-          autor: user?.email ?? undefined,
+          ...(user?.email ? { autor: user.email } : {}),
         });
 
         setStatus({

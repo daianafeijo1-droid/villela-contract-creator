@@ -229,7 +229,8 @@ function Index() {
       ) {
         return false;
       }
-      if (q && !item.contratante.toLowerCase().includes(q)) {
+      const alvo = [item.contratante, item.values?.["cpfCnpj"] ?? "", (item.values?.["cpfCnpj"] ?? "").replace(/\D/g, ""), item.autor ?? ""].join(" ").toLowerCase();
+      if (q && !alvo.includes(q)) {
         return false;
       }
       return true;
@@ -1457,6 +1458,9 @@ function Index() {
                           <div className="min-w-0 flex-1">
                             <p className="truncate font-extrabold text-ink">
                               {item.contratante}
+                              <span className="ml-2 text-xs font-semibold text-ink/40">
+                                {item.autor ? `por ${item.autor}` : item.origem === "visitante" ? "visitante" : ""}
+                              </span>
                             </p>
 
                             <p className="text-sm font-semibold text-ink/50">

@@ -12,6 +12,7 @@ export type HistoryItem = {
   createdAt: string;
   values: FormValues;
   origem: OrigemContrato;
+  autor?: string;
 };
 
 type Dados = Omit<HistoryItem, "id" | "createdAt">;
@@ -37,6 +38,7 @@ export function useHistory(habilitado = true) {
         // origem gravada: tratamos como "equipe" para não sumirem da
         // aba principal do histórico.
         origem: r.dados?.origem ?? "equipe",
+        autor: r.dados?.autor,
       })),
     [rows],
   );
@@ -46,12 +48,14 @@ export function useHistory(habilitado = true) {
     contratante: string;
     values: FormValues;
     origem: OrigemContrato;
+    autor?: string;
   }) {
     await salvar(crypto.randomUUID(), {
       modelId: item.modelId,
       contratante: item.contratante,
       values: { ...item.values },
       origem: item.origem,
+      autor: item.autor,
     });
   }
 

@@ -734,7 +734,7 @@ function Index() {
 
   return (
     <div className="min-h-screen">
-      <div className="mx-auto max-w-5xl px-5 py-8">
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <header className="topbar-glass mb-8 flex items-center justify-between gap-3 px-4 py-3 sm:px-5">
           <div className="topbar-glow">
             <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-violet/70 to-transparent" />
@@ -783,30 +783,28 @@ function Index() {
           </div>
         </header>
 
-        <div className="mb-6 flex flex-wrap gap-2">
+        <nav className="badge-glass sticky top-3 z-30 mb-6 grid grid-cols-2 gap-1 rounded-2xl p-1 backdrop-blur-md sm:inline-grid">
           {(
             [
-              ["contratos", "Contratos"],
-              [
-                "clientes",
-                "Clientes em Atendimento",
-              ],
+              ["contratos", "Gerar Contrato"],
+              ["clientes", "Clientes em Atendimento"],
             ] as const
           ).map(([value, label]) => (
             <button
               key={value}
               type="button"
               onClick={() => setAba(value)}
+              aria-current={aba === value ? "page" : undefined}
               className={
                 aba === value
-                  ? "badge-glass rounded-2xl bg-ink/85! px-5 py-2.5 text-sm font-extrabold text-cream backdrop-blur-md"
-                  : "badge-glass rounded-2xl px-5 py-2.5 text-sm font-extrabold text-ink/60 transition hover:text-ink"
+                  ? "truncate rounded-xl bg-ink/85 px-4 py-2.5 text-sm font-extrabold text-cream shadow-sm"
+                  : "truncate rounded-xl px-4 py-2.5 text-sm font-extrabold text-ink/60 transition hover:bg-ink/5 hover:text-ink"
               }
             >
               {label}
             </button>
           ))}
-        </div>
+        </nav>
 
         {aba === "clientes" && (
           <LoginGate
@@ -879,7 +877,7 @@ function Index() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                 {MODELS.map((m) => {
                   const ativo =
                     m.id === modelId;

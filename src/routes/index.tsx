@@ -219,9 +219,9 @@ const [aba, setAba] = useState<Aba>("contratos");
     try {
       const n = await importarLocais(user?.email ?? undefined);
       setQtdLocais(0);
-      setStatus({ kind: "ok", msg: `${n} contrato(s) antigo(s) enviados para a nuvem.` } as never);
+      setStatus({ kind: "ok", msg: `${n} contrato(s) antigo(s) enviados para a nuvem.` });
     } catch {
-      setStatus({ kind: "error", msg: "Não foi possível enviar os contratos antigos." } as never);
+      setStatus({ kind: "erro", msg: "Não foi possível enviar os contratos antigos." });
     } finally {
       setImportando(false);
     }

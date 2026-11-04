@@ -1413,6 +1413,22 @@ const [aba, setAba] = useState<Aba>("contratos");
                   </p>
                 )}
 
+                {qtdLocais > 0 && (
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-violet/30 p-3">
+                    <p className="text-sm font-bold text-ink">
+                      Encontramos {qtdLocais} contrato(s) antigo(s) salvos só neste computador.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void importarContratosLocais()}
+                      disabled={importando}
+                      className="rounded-xl bg-ink px-4 py-2 text-xs font-bold text-cream transition hover:bg-violet disabled:opacity-50"
+                    >
+                      {importando ? "Enviando..." : "Enviar para a nuvem"}
+                    </button>
+                  </div>
+                )}
+
                 <div className="mb-5 flex flex-wrap gap-2">
                   {(
                     [

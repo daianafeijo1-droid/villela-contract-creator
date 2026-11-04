@@ -203,7 +203,29 @@ const [aba, setAba] = useState<Aba>("contratos");
     sincronizando: historicoSincronizando,
     registrar,
     remover: removerDoHistorico,
+    contratosLocaisAntigos,
+    importarLocais,
   } = useHistory(!!user && !authLoading);
+
+  const [qtdLocais, setQtdLocais] = useState(0);
+  const [importando, setImportando] = useState(false);
+  useEffect(() => {
+    if (user && !historicoCarregando) setQtdLocais(contratosLocaisAntigos().length);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, historicoCarregando, history.length]);
+
+  async function importarContratosLocais() {
+    setImportando(true);
+    try {
+      const n = await importarLocais(user?.email ?? undefined);
+      setQtdLocais(0);
+      setStatus({ kind: "ok", msg: `${n} contrato(s) antigo(s) enviados para a nuvem.` });
+    } catch {
+      setStatus({ kind: "erro", msg: "Não foi possível enviar os contratos antigos." });
+    } finally {
+      setImportando(false);
+    }
+  }
 
   // Histórico dividido: contratos gerados pela equipe logada e
   // contratos gerados por terceiros (visitantes sem login), que só
@@ -268,14 +290,14 @@ const [aba, setAba] = useState<Aba>("contratos");
 
   function exportarHistoricoCsv() {
     const linhas = [
-      ["Contratante", "Modelo", "Data de geração"].join(";"),
+      ["Contratante", "CPF/CNPJ", "Modelo", "Gerado por", "Data de geração"].join(";"),
       ...listaHistoricoAtual.map((item) => {
         const m = getModel(item.modelId);
         const dataFormatada = new Date(item.createdAt).toLocaleDateString(
           "pt-BR",
         );
         const contratante = (item.contratante || "").replace(/;/g, ",");
-        return [contratante, `${m.name} - ${m.subtitle}`, dataFormatada].join(
+        return [contratante, item.values?.["cpfCnpj"] ?? "", `${m.name} - ${m.subtitle}`, item.autor ?? (item.origem === "visitante" ? "visitante" : ""), dataFormatada].join(
           ";",
         );
       }),
@@ -1389,6 +1411,22 @@ const [aba, setAba] = useState<Aba>("contratos");
                   <p className="mb-4 text-xs font-semibold text-ink/40">
                     Atualizando dados compartilhados...
                   </p>
+                )}
+
+                {qtdLocais > 0 && (
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-violet/30 p-3">
+                    <p className="text-sm font-bold text-ink">
+                      Encontramos {qtdLocais} contrato(s) antigo(s) salvos só neste computador.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void importarContratosLocais()}
+                      disabled={importando}
+                      className="rounded-xl bg-ink px-4 py-2 text-xs font-bold text-cream transition hover:bg-violet disabled:opacity-50"
+                    >
+                      {importando ? "Enviando..." : "Enviar para a nuvem"}
+                    </button>
+                  </div>
                 )}
 
                 <div className="mb-5 flex flex-wrap gap-2">

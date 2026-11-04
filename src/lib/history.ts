@@ -17,6 +17,8 @@ export type HistoryItem = {
 
 type Dados = Omit<HistoryItem, "id" | "createdAt">;
 
+const LEGACY_KEY = "villela-contratos-historico";
+
 export function useHistory(habilitado = true) {
   // A leitura do histórico exige login; o registro do contrato gerado
   // funciona também para quem não está logado (sempre chave nova).
@@ -59,6 +61,38 @@ export function useHistory(habilitado = true) {
     });
   }
 
+  /** Contratos antigos guardados só neste navegador (antes da nuvem). */
+  function contratosLocaisAntigos(): HistoryItem[] {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem(LEGACY_KEY);
+      const lista = raw ? (JSON.parse(raw) as HistoryItem[]) : [];
+      const existentes = new Set(rows.map((r) => r.chave));
+      return Array.isArray(lista) ? lista.filter((i) => i?.id && !existentes.has(i.id)) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  async function importarLocais(autor?: string) {
+    const lista = contratosLocaisAntigos();
+    for (const i of lista) {
+      await salvar(i.id, {
+        modelId: i.modelId,
+        contratante: i.contratante,
+        values: { ...i.values },
+        origem: "equipe",
+        ...(autor ? { autor } : {}),
+      });
+    }
+    try {
+      window.localStorage.removeItem(LEGACY_KEY);
+    } catch {
+      /* ignore */
+    }
+    return lista.length;
+  }
+
   return {
     history,
     carregando,
@@ -66,5 +100,7 @@ export function useHistory(habilitado = true) {
     sincronizando,
     registrar,
     remover,
+    contratosLocaisAntigos,
+    importarLocais,
   };
 }

@@ -8,3 +8,4 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+- Team access to registros is limited to @grupovillela.com e-mails via public.e_equipe_villela() and a signup-blocking trigger on auth.users; why: anyone could otherwise create an account and see all data.

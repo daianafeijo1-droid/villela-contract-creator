@@ -141,8 +141,32 @@ function lerRascunho(): Rascunho | null {
   }
 }
 
+const CATEGORIAS = [
+  { id: "todos", label: "✨ Todos" },
+  { id: "bancario", label: "🏛️ Bancário & Renegociação" },
+  { id: "tributario", label: "⚖️ Tributário & Fiscal" },
+  { id: "gestao", label: "📊 Gestão, Risco & Crédito" },
+] as const;
+type CategoriaId = (typeof CATEGORIAS)[number]["id"];
+const CATEGORIA_DO_MODELO: Record<string, CategoriaId> = {
+  "bancario-adesao": "bancario",
+  "bancario-parcelado": "bancario",
+  empresarial: "bancario",
+  agro: "bancario",
+  prf: "tributario",
+  recupere: "tributario",
+  reforma: "tributario",
+  audite: "tributario",
+  avisa: "gestao",
+  rating: "gestao",
+  fgts360: "gestao",
+  gerencie: "gestao",
+  contabilize: "gestao",
+};
+
 function Index() {
-  const [aba, setAba] = useState<Aba>("contratos");
+  const [categoria, setCategoria] = useState<CategoriaId>("todos");
+...
   const [modelId, setModelId] = useState(MODELS[0]!.id);
   const [values, setValues] = useState<FormValues>({});
   const [errors, setErrors] = useState<Record<string, boolean>>({});

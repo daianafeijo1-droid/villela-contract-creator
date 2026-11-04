@@ -290,14 +290,14 @@ const [aba, setAba] = useState<Aba>("contratos");
 
   function exportarHistoricoCsv() {
     const linhas = [
-      ["Contratante", "Modelo", "Data de geração"].join(";"),
+      ["Contratante", "CPF/CNPJ", "Modelo", "Gerado por", "Data de geração"].join(";"),
       ...listaHistoricoAtual.map((item) => {
         const m = getModel(item.modelId);
         const dataFormatada = new Date(item.createdAt).toLocaleDateString(
           "pt-BR",
         );
         const contratante = (item.contratante || "").replace(/;/g, ",");
-        return [contratante, `${m.name} - ${m.subtitle}`, dataFormatada].join(
+        return [contratante, item.values?.["cpfCnpj"] ?? "", `${m.name} - ${m.subtitle}`, item.autor ?? (item.origem === "visitante" ? "visitante" : ""), dataFormatada].join(
           ";",
         );
       }),

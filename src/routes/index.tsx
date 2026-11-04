@@ -166,7 +166,7 @@ const CATEGORIA_DO_MODELO: Record<string, CategoriaId> = {
 
 function Index() {
   const [categoria, setCategoria] = useState<CategoriaId>("todos");
-...
+const [aba, setAba] = useState<Aba>("contratos");
   const [modelId, setModelId] = useState(MODELS[0]!.id);
   const [values, setValues] = useState<FormValues>({});
   const [errors, setErrors] = useState<Record<string, boolean>>({});

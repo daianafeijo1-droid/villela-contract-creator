@@ -203,7 +203,29 @@ const [aba, setAba] = useState<Aba>("contratos");
     sincronizando: historicoSincronizando,
     registrar,
     remover: removerDoHistorico,
+    contratosLocaisAntigos,
+    importarLocais,
   } = useHistory(!!user && !authLoading);
+
+  const [qtdLocais, setQtdLocais] = useState(0);
+  const [importando, setImportando] = useState(false);
+  useEffect(() => {
+    if (user && !historicoCarregando) setQtdLocais(contratosLocaisAntigos().length);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, historicoCarregando, history.length]);
+
+  async function importarContratosLocais() {
+    setImportando(true);
+    try {
+      const n = await importarLocais(user?.email ?? undefined);
+      setQtdLocais(0);
+      setStatus({ kind: "ok", msg: `${n} contrato(s) antigo(s) enviados para a nuvem.` } as never);
+    } catch {
+      setStatus({ kind: "error", msg: "Não foi possível enviar os contratos antigos." } as never);
+    } finally {
+      setImportando(false);
+    }
+  }
 
   // Histórico dividido: contratos gerados pela equipe logada e
   // contratos gerados por terceiros (visitantes sem login), que só

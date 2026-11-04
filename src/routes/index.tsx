@@ -877,8 +877,35 @@ function Index() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                {MODELS.map((m) => {
+              <div className="mb-4 flex flex-wrap gap-2">
+                {CATEGORIAS.map((c) => {
+                  const qtd =
+                    c.id === "todos"
+                      ? MODELS.length
+                      : MODELS.filter((m) => CATEGORIA_DO_MODELO[m.id] === c.id).length;
+                  const on = categoria === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setCategoria(c.id)}
+                      aria-pressed={on}
+                      className={`rounded-full px-4 py-2 text-xs font-extrabold transition-all duration-300 ${
+                        on
+                          ? "bg-ink text-cream shadow-md scale-[1.03]"
+                          : "badge-glass text-ink/60 hover:text-ink hover:-translate-y-0.5"
+                      }`}
+                    >
+                      {c.label} <span className="opacity-60">({qtd})</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div key={categoria} className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                {MODELS.filter(
+                  (m) => categoria === "todos" || CATEGORIA_DO_MODELO[m.id] === categoria,
+                ).map((m, i) => {
                   const ativo =
                     m.id === modelId;
 
@@ -921,12 +948,16 @@ function Index() {
                           return next;
                         });
                       }}
+                      style={{ animationDelay: `${i * 35}ms` }}
                       className={
                         ativo
-                          ? "badge-glass relative rounded-2xl p-4 text-left ring-2 ring-violet/60"
-                          : "badge-glass rounded-2xl p-4 text-left opacity-80 transition hover:-translate-y-1 hover:opacity-100"
+                          ? "model-card badge-glass relative rounded-2xl p-4 text-left ring-2 ring-violet/60 shadow-lg -translate-y-0.5"
+                          : "model-card badge-glass relative rounded-2xl p-4 text-left opacity-85 hover:-translate-y-1 hover:opacity-100 hover:shadow-lg"
                       }
                     >
+                      <span className="mb-2 inline-block rounded-full bg-ink/5 px-2 py-0.5 text-[9px] font-extrabold tracking-wider text-ink/50 uppercase">
+                        {CATEGORIAS.find((c) => c.id === CATEGORIA_DO_MODELO[m.id])?.label.replace(/^\S+\s/, "")}
+                      </span>
                       {ativo && (
                         <span className="badge-glass absolute -top-3 right-3 bg-pop/90! px-2 py-0.5 text-[10px] font-extrabold text-cream">
                           Ativo
